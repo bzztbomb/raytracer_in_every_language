@@ -7,14 +7,17 @@ class Material (object):
 	def scatter(self, ray_in, hit_record):
 		return (False, zero(), zero())
 
+	def emit(self, u, v, p):
+		return zero()
+
 class Lambert (Material):
 	def __init__(self, albedo):
 		self.albedo = albedo
 
 	def scatter(self, ray_in, hit_record):
 		target = hit_record.pt + hit_record.normal + pt_in_unit_sphere()
-		scattered = Ray(hit_record.pt, target - hit_record.pt)
-		return (True, scattered, self.albedo)
+		scattered = Ray(hit_record.pt, target - hit_record.pt, ray_in.time)
+		return (True, scattered, self.albedo.value(hit_record.u, hit_record.v, hit_record.pt))
 
 class Metal(Material):
 	def __init__(self, albedo, fuzz):
@@ -23,8 +26,8 @@ class Metal(Material):
 
 	def scatter(self, ray_in, hit_record):
 		r = reflect(ray_in.direction.unit(), hit_record.normal)
-		ray = Ray(hit_record.pt, r + pt_in_unit_sphere() * self.fuzz)
-		return (ray.direction.dot(hit_record.normal) > 0, ray, self.albedo)
+		ray = Ray(hit_record.pt, r + pt_in_unit_sphere() * self.fuzz, ray_in.time)
+		return (ray.direction.dot(hit_record.normal) > 0, ray, self.albedo.value(hit_record.u, hit_record.v, hit_record.pt))
 
 def schlick(cosine, ref_index):
 	r0 = (1-ref_index) / (1+ref_index)
@@ -36,37 +39,35 @@ class Dieletric(Material):
 		self.ref_index = ref_index
 
 	def scatter(self, ray_in, hit_record):
-		# print("in scatter!")
-		# print(ray_in)
-		# print(hit_record)
 		outward_normal = None
+		reflected = reflect(ray_in.direction, hit_record.normal)
 		ni_over_nt = None
+		attenuation = Vector3(1,1,1)
 		cosine = None
+		bob = ray_in.direction.unit().dot(hit_record.normal)
 		if ray_in.direction.dot(hit_record.normal) > 0:
 			outward_normal = -hit_record.normal
-			# print(outward_normal)
 			ni_over_nt = self.ref_index
-			# print(ni_over_nt)
 			cosine = ray_in.direction.dot(hit_record.normal) / ray_in.direction.length()
-			g = 1.0 - self.ref_index*self.ref_index*(1.0-cosine*cosine)
-			cosine = math.sqrt(g) if g > 0 else -99
-			# print(g)
-			# cosine = math.sqrt(g)
+			g = 1 - self.ref_index*self.ref_index*(1-cosine*cosine)
+			cosine = math.sqrt(g) if g > 0 else 0
 		else:
 			outward_normal = hit_record.normal
 			ni_over_nt = 1 / self.ref_index
-			cosine = -ray_in.direction.dot(hit_record.normal) / ray_in.direction.length()
+			cosine = -ray_in.direction.unit().dot(hit_record.normal.unit())
 		refracted, rdir = refract(ray_in.direction, outward_normal, ni_over_nt)
-		if (refracted and cosine == -99):
-			raise Exception("FUCK")
 		reflect_prob = schlick(cosine, self.ref_index) if refracted else 1.0
-		attenuation = Vector3(1,1,1)
 		if random.random() > reflect_prob:
-			# 		print("refracted: " + rdir)
-			return (True, Ray(hit_record.pt, rdir), attenuation)
+			return (True, Ray(hit_record.pt, rdir, ray_in.time), attenuation)
 		else:
-			reflected = reflect(ray_in.direction, hit_record.normal)
-			# print("reflected: " + str(reflected))
-			return (True, Ray(hit_record.pt, reflected), attenuation)
+			return (True, Ray(hit_record.pt, reflected, ray_in.time), attenuation)
 
+class DiffuseLight(Material):
+	def __init__(self, tex):
+		self.texture = tex
 
+	def scatter(self, ray_in, hit_record):
+		return (False, zero(), zero())
+
+	def emit(self, u, v, p):
+		return self.texture.value(u, v, p)

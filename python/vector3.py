@@ -5,14 +5,13 @@ class Vector3(object):
 		self.data = [x, y, z]
 
 	def __repr__(self):
-		return '{self.x}, {self.y}, {self.z}'.format(self=self)
+		return '({self.x}, {self.y}, {self.z})'.format(self=self)
 
 	def __mul__(self, o):
 		if isinstance(o, Vector3):
 			return Vector3(self.x*o.x,self.y*o.y,self.z*o.z)
 		else:
 			return Vector3(self.x * o, self.y * o, self.z * o)
-
 	def __rmul__(self, o):
 		return self*o
 
@@ -27,6 +26,9 @@ class Vector3(object):
 
 	def __neg__(self):
 		return self * -1
+
+	def __getitem__(self, key):
+		return self.data[key]
 
 	@property
 	def x(self):
@@ -51,7 +53,8 @@ class Vector3(object):
 		return self.x*o.x + self.y*o.y + self.z*o.z
 
 	def cross(self, o):
-		return Vector3(self.y*o.z - self.z*o.y, -(self.x*o.z-self.z*o.x), self.x*o.y-self.y*o.x)
+		return Vector3(self.y*o.z - self.z*o.y, -(self.x*o.z - self.z*o.x), self.x*o.y - self.y*o.x)
+
 
 def one():
 	return Vector3(1,1,1)
@@ -70,6 +73,7 @@ def refract(v, n, ni_over_nt):
 		return (True, (uv - n * dt) * ni_over_nt - n * math.sqrt(discr))
 	else:
 		return (False, None)
+
 
 
 
