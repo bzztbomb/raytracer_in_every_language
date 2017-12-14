@@ -1,9 +1,8 @@
-# import numpy
-# import matplotlib
-# from pylab import *
 import math
 import random
 import sys
+
+from concurrent.futures import ProcessPoolExecutor, wait
 
 from ray import *
 from vector3 import *
@@ -12,6 +11,22 @@ from camera import *
 from material import *
 from texture import *
 from constant_medium import *
+
+RED = 0
+GREEN = 1
+BLUE = 2
+
+RENDER_MODE = True
+ROWS = 100
+COLS = 100
+NUM_SAMPLES = 1000
+
+#
+# Single thread Timings for 100,100,100 real	7m36.600s, user	7m30.134s, sys	0m1.904s
+# Thread Pool timings with 4 workers: real	8m9.428s user	8m6.958s sys	0m4.945s
+# Process Pool with 4 workers: real	1m56.122s user	7m3.216s sys	0m0.540s
+# Process pool nwith 8 workers: real	1m44.566s user	12m15.019s sys	0m0.716s
+# Process pool with 7 workers: real	1m56.024s user	11m43.397s sys	0m1.463s
 
 def col(ray, world, depth):
 	hit, hit_record = world.hit(ray, 0.001, sys.float_info.max)
@@ -27,15 +42,7 @@ def col(ray, world, depth):
 
 	return Vector3(0,0,0)
 
-RED = 0
-GREEN = 1
-BLUE = 2
-
-render_mode = True
-rows = 500
-cols = 500
-num_samples = 5000
-# image_array = numpy.zeros(rows*cols*channels).reshape(rows, cols, channels)
+# image_array = numpy.zeros(ROWS*COLS*channels).reshape(ROWS, COLS, channels)
 
 def scene_simple():
 	objects = []
@@ -50,7 +57,7 @@ def scene_simple():
 	look_from = Vector3(-2,2,-3)
 	look_at = Vector3(0,0,-1)
 	b = (look_from - look_at).length()
-	cam = Camera(look_from, look_at, Vector3(0,1,0), 40, cols / rows, 0, b, 0, 1)
+	cam = Camera(look_from, look_at, Vector3(0,1,0), 40, COLS / ROWS, 0, b, 0, 1)
 	return (cam, objects)
 
 def scene_random():
@@ -82,7 +89,7 @@ def scene_random():
 	look_at = zero()
 	dist_to_focus = 10
 	aperture = 0.1
-	cam = Camera(look_from, look_at, Vector3(0,1,0), 20, cols / rows, aperture, dist_to_focus, 0, 1)
+	cam = Camera(look_from, look_at, Vector3(0,1,0), 20, COLS / ROWS, aperture, dist_to_focus, 0, 1)
 	return (cam, objects)
 
 def scene_twospheres():
@@ -95,7 +102,7 @@ def scene_twospheres():
 	look_at = zero()
 	dist_to_focus = 10
 	aperture = 0.0
-	cam = Camera(look_from, look_at, Vector3(0,1,0), 40, cols / rows, aperture, dist_to_focus, 0, 1)
+	cam = Camera(look_from, look_at, Vector3(0,1,0), 40, COLS / ROWS, aperture, dist_to_focus, 0, 1)
 	return (cam, objects)
 
 def scene_globes():
@@ -107,7 +114,7 @@ def scene_globes():
 	look_at = zero()
 	dist_to_focus = 10
 	aperture = 0.0
-	cam = Camera(look_from, look_at, Vector3(0,1,0), 40, cols / rows, aperture, dist_to_focus, 0, 1)
+	cam = Camera(look_from, look_at, Vector3(0,1,0), 40, COLS / ROWS, aperture, dist_to_focus, 0, 1)
 	return (cam, objects)
 
 def scene_cornell():
@@ -130,7 +137,7 @@ def scene_cornell():
 	dist_to_focus = 10
 	aperture = 0.0
 	vfov = 40
-	cam = Camera(look_from, look_at, Vector3(0,1,0), vfov, cols / rows, aperture, dist_to_focus, 0, 1)
+	cam = Camera(look_from, look_at, Vector3(0,1,0), vfov, COLS / ROWS, aperture, dist_to_focus, 0, 1)
 
 	return (cam, objects)
 
@@ -156,7 +163,7 @@ def scene_cornell_smoke():
 	dist_to_focus = 10
 	aperture = 0.0
 	vfov = 40
-	cam = Camera(look_from, look_at, Vector3(0,1,0), vfov, cols / rows, aperture, dist_to_focus, 0, 1)
+	cam = Camera(look_from, look_at, Vector3(0,1,0), vfov, COLS / ROWS, aperture, dist_to_focus, 0, 1)
 
 	return (cam, objects)
 
@@ -202,7 +209,7 @@ def scene_final():
 	dist_to_focus = 10
 	aperture = 0.0
 	vfov = 40
-	cam = Camera(look_from, look_at, Vector3(0,1,0), vfov, cols / rows, aperture, dist_to_focus, 0, 1)
+	cam = Camera(look_from, look_at, Vector3(0,1,0), vfov, COLS / ROWS, aperture, dist_to_focus, 0, 1)
 
 	return (cam, objects)
 
@@ -217,38 +224,61 @@ def clamp(c):
 		b /= m
 	return Vector3(r,g,b)
 
-cam, objects = scene_final()
+def render(cam, world, y_start, y_finish, index):
+	result = []
+	for y in range(y_start, y_finish):
+		flippedy = ROWS - y - 1
+		for x in range(COLS):
+			c = Vector3(0,0,0)
+			for ns in range(NUM_SAMPLES):
+				u = (x+random.random()) / COLS
+				v = (flippedy+random.random()) / ROWS
+				r = cam.get_ray(u, v)
+				c += col(r, world, 0)
+			c /= NUM_SAMPLES
+			output = clamp(c)
 
-# world = NodeBvh(objects, 0, 1)
-world = HitableList(objects)
-
-# print(col(cam.get_ray(50 / cols, (rows - 90) / rows), world, 0))
-# exit(-1)
-
-if render_mode:
-	print("P3\n%d %d\n%d" % (cols, rows, 255))
-
-for y in range(rows):
-	flippedy = rows - y - 1
-	for x in range(cols):
-		c = Vector3(0,0,0)
-		for ns in range(num_samples):
-			u = (x+random.random()) / cols
-			v = (flippedy+random.random()) / rows
-			r = cam.get_ray(u, v)
-			c += col(r, world, 0)
-		c /= num_samples
-		# image_array[y, x, RED] = math.sqrt(c.x)
-		# image_array[y, x, GREEN] = math.sqrt(c.y)
-		# image_array[y, x, BLUE] = math.sqrt(c.z)
-		output = clamp(c)
-
-		if (c.data[0] < 0 or c.data[1] < 0 or c.data[2] < 0):
-			raise Exception("{0} {1}".format(x, y))
-		if render_mode:
+			if (c.data[0] < 0 or c.data[1] < 0 or c.data[2] < 0):
+				raise Exception("{0} {1}".format(x, y))
 			output = output * 255
-			print("%d %d %d" % (output.x, output.y, output.z))
+			result.append("%d %d %d" % (output.x, output.y, output.z))
+	return (index, result)
 
-# imshow(image_array, interpolation='None')
-# show()
+if __name__ == "__main__":
+	gcam, objects = scene_cornell()
+	gworld = HitableList(objects)
 
+	# Debug a single pixel
+	# print(col(cam.get_ray(50 / COLS, (ROWS - 90) / ROWS), world, 0))
+	# exit(-1)
+
+	chunks = 7
+	pool = ProcessPoolExecutor(chunks)
+
+	chunk_length = ROWS // chunks
+	curr_start = 0
+	curr_end = chunk_length
+
+	futures = []
+	i = 0
+	for chunk in range(chunks):
+		futures.append(pool.submit(render, gcam, gworld, curr_start, curr_end, i))
+		curr_start += chunk_length
+		curr_end += chunk_length
+		i += 1
+		if (curr_end > ROWS):
+			curr_end = ROWS
+
+	chunks_results = wait(futures)
+	if RENDER_MODE:
+		print("P3\n%d %d\n%d" % (COLS, ROWS, 255))
+		results = []
+		for chunk in chunks_results:
+			for c in chunk:
+				results.append(c.result())
+				# for line in c.result():
+				# 	print(line)
+		results.sort(key=lambda x: x[0])
+		for i in results:
+			for j in i[1]:
+				print(j)
