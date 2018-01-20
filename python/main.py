@@ -17,9 +17,9 @@ GREEN = 1
 BLUE = 2
 
 RENDER_MODE = True
-ROWS = 100
-COLS = 100
-NUM_SAMPLES = 1000
+ROWS = 500
+COLS = 500
+NUM_SAMPLES = 5000
 
 #
 # Single thread Timings for 100,100,100 real	7m36.600s, user	7m30.134s, sys	0m1.904s
