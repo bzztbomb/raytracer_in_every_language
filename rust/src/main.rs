@@ -1,20 +1,18 @@
 extern crate rust;
 extern crate rand;
 
-use rust::Vec3;
-use rust::Ray;
-use rust::HitableList;
-use rust::Sphere;
-use rust::Hitable;
-use rust::Camera;
-use rust::Material;
-use rust::Lambertian;
-use rust::Metal;
-use rust::Dielectric;
 use std::rc::Rc;
 
+use rand::random;
+
+use rust::vec3::Vec3;
+use rust::ray::Ray;
+use rust::hitable::*;
+use rust::material::*;
+use rust::camera::*;
+
 fn color(r: &Ray, scene: &Box<Hitable>, depth: u32) -> Vec3 {
-    if let Some(scene_hit) = scene.hit(r, 0.0, 10000.0) {
+    if let Some(scene_hit) = scene.hit(r, 0.0, std::f64::MAX) {
         if depth >= 50 {
             return Vec3::zero();
         }
@@ -31,17 +29,17 @@ fn color(r: &Ray, scene: &Box<Hitable>, depth: u32) -> Vec3 {
 
 const NX: u32 = 400;
 const NY: u32 = 200;
-const NS: u32 = 100;
+const NS: u32 = 20;
 
 fn main() {
     println!("P3\n{} {}\n255", NX, NY);
-    let (scene, camera) = scene_random();
+    let (scene, camera) = simple_scene();
     for j in (0..NY).rev() {
         for i in 0..NX {
             let mut c = Vec3::zero();
             for _ in 0..NS {
-                let u = ((i as f64) + rand::random::<f64>()) / NX as f64;
-                let v = ((j as f64) + rand::random::<f64>()) / NY as f64;
+                let u = ((i as f64) + random::<f64>()) / NX as f64;
+                let v = ((j as f64) + random::<f64>()) / NY as f64;
                 let r = camera.get_ray(u, v);
                 let p = color(&r, &scene, 0);
                 c = c + p;
@@ -64,12 +62,12 @@ fn simple_scene() -> (Box<Hitable>, Camera) {
     let camera = Camera::new(&look_from, &look_at, &Vec3::new(0.0, 1.0, 0.0), 20.0, NX as f64 / NY as f64, aperture, dist_to_focus);
 
     let mut result = Box::new(HitableList::new());
-    result.add_hitable(Box::new(Sphere::new(Vec3::new(0.0, 0.0, -1.0), 0.5, Rc::new(Lambertian::new(Vec3::new(0.5, 0.5, 0.5))))));
-    result.add_hitable(Box::new(Sphere::new(Vec3::new(0.0, -100.5, 0.0), 100.0, Rc::new(Lambertian::new(Vec3::new(0.0, 1.0, 0.0))))));
-    result.add_hitable(Box::new(Sphere::new(Vec3::new(1.0, 0.0, -1.0), 0.5, Rc::new(Metal::new(Vec3::new(0.8, 0.6, 0.2), 0.3)))));
-    // result.add_hitable(Box::new(Sphere::new(Vec3::new(-1.0, 0.0, -1.0), 0.5, Rc::new(Metal::new(Vec3::new(0.8, 0.8, 0.8), 1.0)))));
-    result.add_hitable(Box::new(Sphere::new(Vec3::new(-1.0, 0.0, -1.0), 0.5, Rc::new(Dielectric::new(1.5)))));
-    result.add_hitable(Box::new(Sphere::new(Vec3::new(-1.0, 0.0, -1.0), -0.45, Rc::new(Dielectric::new(1.5)))));
+    result.add_hitable(Sphere::boxed(Vec3::new(0.0, 0.0, -1.0), 0.5, Lambertian::rc(Vec3::new(0.5, 0.5, 0.5))));
+    result.add_hitable(Sphere::boxed(Vec3::new(0.0, -100.5, 0.0), 100.0, Lambertian::rc(Vec3::new(0.0, 1.0, 0.0))));
+    result.add_hitable(Sphere::boxed(Vec3::new(1.0, 0.0, -1.0), 0.5, Metal::rc(Vec3::new(0.8, 0.6, 0.2), 0.3)));
+    // result.add_hitable(Sphere::boxed(Vec3::new(-1.0, 0.0, -1.0), 0.5, Metal::rc(Vec3::new(0.8, 0.8, 0.8), 1.0)));
+    result.add_hitable(Sphere::boxed(Vec3::new(-1.0, 0.0, -1.0), 0.5, Dielectric::rc(1.5)));
+    result.add_hitable(Sphere::boxed(Vec3::new(-1.0, 0.0, -1.0), -0.45, Dielectric::rc(1.5)));
     (result, camera)
 }
 
@@ -81,30 +79,30 @@ fn scene_random() -> (Box<Hitable>, Camera) {
     let camera = Camera::new(&look_from, &look_at, &Vec3::new(0.0, 1.0, 0.0), 20.0, NX as f64 / NY as f64, aperture, dist_to_focus);
 
     let mut result = Box::new(HitableList::new());
-    result.add_hitable(Box::new(Sphere::new(Vec3::new(0.0, -1000.0, 0.0), 1000.0, Rc::new(Lambertian::new(Vec3::new(0.5, 0.5, 0.5))))));
-	result.add_hitable(Box::new(Sphere::new(Vec3::new(0.0,1.0,0.0), 1.0, Rc::new(Dielectric::new(1.5)))));
-	result.add_hitable(Box::new(Sphere::new(Vec3::new(-4.0, 1.0, 0.0), 1.0, Rc::new(Lambertian::new(Vec3::new(0.4, 0.2, 0.1))))));
-	result.add_hitable(Box::new(Sphere::new(Vec3::new(4.0, 1.0, 0.0), 1.0, Rc::new(Metal::new(Vec3::new(0.7, 0.6, 0.5), 0.0)))));
+    result.add_hitable(Sphere::boxed(Vec3::new(0.0, -1000.0, 0.0), 1000.0, Lambertian::rc(Vec3::new(0.5, 0.5, 0.5))));
+	result.add_hitable(Sphere::boxed(Vec3::new(0.0,1.0,0.0), 1.0, Dielectric::rc(1.5)));
+	result.add_hitable(Sphere::boxed(Vec3::new(-4.0, 1.0, 0.0), 1.0, Lambertian::rc(Vec3::new(0.4, 0.2, 0.1))));
+	result.add_hitable(Sphere::boxed(Vec3::new(4.0, 1.0, 0.0), 1.0, Metal::rc(Vec3::new(0.7, 0.6, 0.5), 0.0)));
 
     for a in -11..11 {
         for b in -11..11 {
-            let choose_mat = rand::random::<f64>();
+            let choose_mat = random::<f64>();
             let radius = 0.2;
-            let center = Vec3::new(a as f64+0.9+rand::random::<f64>(), radius, b as f64+0.9+rand::random::<f64>());
+            let center = Vec3::new(a as f64+0.9+random::<f64>(), radius, b as f64+0.9+random::<f64>());
             let offset = Vec3::new(4.0, radius, 0.0);
             if (center - offset).length() > 0.9 {
                 let mat: Rc<Material>;
                 if choose_mat < 0.8 {
-                    let lam_rand = || { rand::random::<f64>()*rand::random::<f64>() };
-                    mat = Rc::new(Lambertian::new(Vec3::new(lam_rand(), lam_rand(), lam_rand())));
+                    let lam_rand = || { random::<f64>()*random::<f64>() };
+                    mat = Lambertian::rc(Vec3::new(lam_rand(), lam_rand(), lam_rand()));
                 } else if choose_mat < 0.95 {
-                    let met_rand = || (1.0 + rand::random::<f64>()) * 0.5;
-                    mat = Rc::new(Metal::new(
-                        Vec3::new(met_rand(), met_rand(), met_rand()), rand::random::<f64>() * 0.5));
+                    let met_rand = || (1.0 + random::<f64>()) * 0.5;
+                    mat = Metal::rc(
+                        Vec3::new(met_rand(), met_rand(), met_rand()), random::<f64>() * 0.5);
                 } else {
-                    mat = Rc::new(Dielectric::new(1.5));
+                    mat = Dielectric::rc(1.5);
                 }
-                result.add_hitable(Box::new(Sphere::new(center, radius, mat)))
+                result.add_hitable(Sphere::boxed(center, radius, mat));
             }
         }
     }
