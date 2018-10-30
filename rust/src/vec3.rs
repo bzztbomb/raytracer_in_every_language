@@ -74,6 +74,18 @@ impl Vec3 {
     }
 }
 
+impl ops::Index<usize> for Vec3 {
+  type Output = f64;
+
+  fn index(&self, i: usize) -> &f64 {
+    match i {
+      0 => &self.x,
+      1 => &self.y,
+      2 => &self.z,
+      _ => { panic!("Vec3[] invalid index: {}", i); }
+    }
+  }
+}
 
 impl ops::Add<Vec3> for Vec3 {
   type Output = Vec3;
