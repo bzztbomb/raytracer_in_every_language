@@ -6,15 +6,14 @@ pub mod hitable;
 pub mod material;
 pub mod camera;
 pub mod aabb;
+pub mod scenes;
+pub mod renderer;
 
 #[cfg(test)]
 mod tests {
 
   use vec3::Vec3;
   use ray::Ray;
-  use hitable::*;
-  use material::*;
-
 
   #[test]
   fn test_pt_at_param() {
