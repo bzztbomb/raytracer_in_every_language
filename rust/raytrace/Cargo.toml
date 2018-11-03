@@ -1,0 +1,7 @@
+[package]
+name = "raytrace"
+version = "0.1.0"
+authors = ["Brian Richardson <skinny@knowhere.net>"]
+
+[dependencies]
+rand = "0.4.0"

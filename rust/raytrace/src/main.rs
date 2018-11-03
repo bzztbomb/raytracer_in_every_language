@@ -1,10 +1,10 @@
-extern crate rust;
+extern crate raytrace;
 
-use rust::renderer::Renderer;
+use raytrace::renderer::Renderer;
 
 const NX: u32 = 400;
 const NY: u32 = 200;
-const NS: u32 = 200;
+const NS: u32 = 10;
 
 fn main() {
     let renderer = Renderer::new(NX, NY, NS);

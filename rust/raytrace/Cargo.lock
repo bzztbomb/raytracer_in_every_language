@@ -33,7 +33,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "rust"
+name = "raytrace"
 version = "0.1.0"
 dependencies = [
  "rand 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
