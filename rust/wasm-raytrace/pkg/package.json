@@ -1,0 +1,15 @@
+{
+  "name": "wasm-raytrace",
+  "collaborators": [
+    "Brian Richardson <brian@torch3d.com>"
+  ],
+  "version": "0.1.0",
+  "files": [
+    "wasm_raytrace_bg.wasm",
+    "wasm_raytrace.js",
+    "wasm_raytrace.d.ts"
+  ],
+  "module": "wasm_raytrace.js",
+  "types": "wasm_raytrace.d.ts",
+  "sideEffects": "false"
+}
