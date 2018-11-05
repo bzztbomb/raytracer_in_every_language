@@ -1,5 +1,3 @@
-extern crate rand;
-
 pub mod vec3;
 pub mod ray;
 pub mod hitable;
@@ -8,12 +6,14 @@ pub mod camera;
 pub mod aabb;
 pub mod scenes;
 pub mod renderer;
+pub mod rt_rand;
 
 #[cfg(test)]
 mod tests {
 
   use vec3::Vec3;
   use ray::Ray;
+  use rt_rand::*;
 
   #[test]
   fn test_pt_at_param() {

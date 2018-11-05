@@ -3,13 +3,11 @@ use std::usize;
 use std::mem;
 use std::fmt;
 
-extern crate rand;
-use rand::random;
-
 use vec3::Vec3;
 use ray::Ray;
 use material::Material;
 use aabb::Aabb;
+use rt_rand::*;
 
 #[derive(Clone)]
 pub struct HitRecord {
@@ -161,7 +159,7 @@ impl Bvh {
       },
       _ => {
         // Sort and divide the list
-        let axis: usize = random::<usize>() % 3;
+        let axis: usize = rand_usize() % 3;
         hitable_indices.sort_unstable_by(|a, b| {
           let a_aabb = hitables[*a].bounding_box(time0, time1);
           let b_aabb = hitables[*b].bounding_box(time0, time1);

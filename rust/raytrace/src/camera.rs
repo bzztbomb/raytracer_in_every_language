@@ -1,18 +1,7 @@
-extern crate rand;
-
 use vec3::Vec3;
-use rand::random;
 use ray::Ray;
 use std::f64::consts::PI;
-
-fn random_in_unit_disk() -> Vec3 {
-  loop {
-    let p = 2.0 * Vec3::new(random::<f64>(), random::<f64>(), 0.0) - Vec3::new(1.0, 1.0, 0.0);
-    if Vec3::dot(&p, &p) < 1.0  {
-      break p;
-    }
-  }
-}
+use rt_rand::*;
 
 pub struct Camera {
   origin: Vec3,
@@ -54,7 +43,7 @@ impl Camera {
   pub fn get_ray(&self, u: f64, v: f64) -> Ray {
     let rd = self.lens_radius * random_in_unit_disk();
     let offset = self.u * rd.x + self.v * rd.y;
-    let time = self.time0 + (self.time1-self.time0)*random::<f64>();
+    let time = self.time0 + (self.time1-self.time0)*rand_f64();
     Ray::new(self.origin + offset, self.lower_left_corner + u * self.horizontal + v * self.vertical - self.origin - offset, time)
   }
 }

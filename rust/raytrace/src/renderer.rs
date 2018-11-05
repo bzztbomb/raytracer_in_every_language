@@ -1,12 +1,9 @@
-extern crate rand;
-
-use rand::random;
-
 use camera::Camera;
 use hitable::Hitable;
 use scenes::*;
 use vec3::Vec3;
 use ray::Ray;
+use rt_rand::*;
 
 pub struct Renderer {
   scene: Box<Hitable>,
@@ -28,8 +25,8 @@ impl Renderer {
   pub fn pixel_color(&self, i: u32, j: u32) -> Vec3 {
     let mut c = Vec3::zero();
     for _ in 0..self.num_samples {
-        let u = ((i as f64) + random::<f64>()) / self.nx as f64;
-        let v = ((j as f64) + random::<f64>()) / self.ny as f64;
+        let u = ((i as f64) + rand_f64()) / self.nx as f64;
+        let v = ((j as f64) + rand_f64()) / self.ny as f64;
         let r = self.camera.get_ray(u, v);
         let p = self.color(&r, &self.scene, 0);
         c = c + p;

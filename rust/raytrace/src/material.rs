@@ -1,12 +1,9 @@
-extern crate rand;
-
 use std::rc::Rc;
-
-use rand::random;
 
 use vec3::Vec3;
 use ray::Ray;
 use hitable::HitRecord;
+use rt_rand::*;
 
 pub struct ScatterInfo {
   pub attenuation: Vec3,
@@ -32,16 +29,6 @@ impl Lambertian {
   pub fn rc(albedo: Vec3) -> Rc<Lambertian> {
     Rc::new(Lambertian::new(albedo))
   }
-}
-
-fn random_in_unit_sphere() -> Vec3 {
-    // Generate a vector with spherical coords y0
-    loop {
-        let p = 2.0 * Vec3::new(random::<f64>(), random::<f64>(), random::<f64>()) - Vec3::one();
-        if Vec3::dot(&p, &p) < 1.0 {
-            break p;
-        }
-    }
 }
 
 impl Material for Lambertian {
@@ -140,7 +127,7 @@ impl Material for Dielectric {
     } else {
       reflect_prob = 1.0;
     }
-    if random::<f64>() < reflect_prob {
+    if rand_f64() < reflect_prob {
       Some(ScatterInfo {
         attenuation: Vec3::one(),
         scattered: Ray::new(hit.p, reflected, ray.time),
