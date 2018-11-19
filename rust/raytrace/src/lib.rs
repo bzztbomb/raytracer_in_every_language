@@ -7,6 +7,7 @@ pub mod aabb;
 pub mod scenes;
 pub mod renderer;
 pub mod rt_rand;
+pub mod texture;
 
 #[cfg(test)]
 mod tests {

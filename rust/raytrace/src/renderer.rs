@@ -16,7 +16,7 @@ pub struct Renderer {
 impl Renderer {
   // TODO: Pick scene externally.
   pub fn new(nx: u32, ny: u32, ns: u32) -> Renderer {
-    let (scene, camera) = simple_scene(nx, ny);
+    let (scene, camera) = scene_random(nx, ny);
     Renderer {
       scene, camera, nx, ny, num_samples: ns
     }

@@ -4,6 +4,7 @@ use vec3::Vec3;
 use ray::Ray;
 use hitable::HitRecord;
 use rt_rand::*;
+use texture::Texture;
 
 pub struct ScatterInfo {
   pub attenuation: Vec3,
@@ -16,18 +17,18 @@ pub trait Material {
 }
 
 pub struct Lambertian {
-  albedo: Vec3
+  texture: Rc<Texture>
 }
 
 impl Lambertian {
-  pub fn new(albedo: Vec3) -> Lambertian {
+  pub fn new(texture: Rc<Texture>) -> Lambertian {
     Lambertian {
-      albedo
+      texture
     }
   }
 
-  pub fn rc(albedo: Vec3) -> Rc<Lambertian> {
-    Rc::new(Lambertian::new(albedo))
+  pub fn rc(texture: Rc<Texture>) -> Rc<Lambertian> {
+    Rc::new(Lambertian::new(texture))
   }
 }
 
@@ -36,27 +37,27 @@ impl Material for Lambertian {
     let target = hit.p + hit.normal + random_in_unit_sphere();
     let scattered = Ray::new(hit.p, target - hit.p, ray.time);
     Some(ScatterInfo {
-      attenuation: self.albedo,
+      attenuation: self.texture.value(0.0, 0.0, &hit.p),
       scattered
     })
   }
 }
 
 pub struct Metal {
-  albedo: Vec3,
+  texture: Rc<Texture>,
   fuzz: f64,
 }
 
 impl Metal {
-  pub fn new(albedo: Vec3, fuzz: f64) -> Metal {
+  pub fn new(texture: Rc<Texture>, fuzz: f64) -> Metal {
     Metal {
-      albedo,
+      texture,
       fuzz
     }
   }
 
-  pub fn rc(albedo: Vec3, fuzz: f64) -> Rc<Metal> {
-    Rc::new(Metal::new(albedo, fuzz))
+  pub fn rc(texture: Rc<Texture>, fuzz: f64) -> Rc<Metal> {
+    Rc::new(Metal::new(texture, fuzz))
   }
 }
 
@@ -66,7 +67,7 @@ impl Material for Metal {
     let scattered = Ray::new(hit.p, reflected + self.fuzz * random_in_unit_sphere(), ray.time);
     if Vec3::dot(&scattered.direction, &hit.normal) > 0.0 {
       Some(ScatterInfo {
-        attenuation: self.albedo,
+        attenuation: self.texture.value(0.0, 0.0, &hit.p),
         scattered
       })
     } else {
