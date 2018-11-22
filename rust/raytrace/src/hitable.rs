@@ -14,15 +14,19 @@ pub struct HitRecord {
   pub t: f64,
   pub p: Vec3,
   pub normal: Vec3,
+  pub u: f64,
+  pub v: f64,
   pub material: Rc<Material>
 }
 
 impl HitRecord {
-  fn new(t: f64, p: Vec3, normal: Vec3, material: Rc<Material>) -> HitRecord {
+  fn new(t: f64, p: Vec3, normal: Vec3, u: f64, v: f64, material: Rc<Material>) -> HitRecord {
     HitRecord {
       t: t,
       p: p,
       normal: normal,
+      u,
+      v,
       material
     }
   }
@@ -265,11 +269,11 @@ impl Hitable for Sphere {
       if t > t_min && t < t_max {
         let pt = ray.point_at_parameter(t);
         let normal = (pt - center) / self.radius;
-        // let phi = normal.z.atan2(normal.x);
-        // let theta = normal.y.asin();
-        // let u = 1.0-(phi+std::f64::consts::PI) / (2.0 * std::f64::consts::PI);
-        // let v = (theta + std::f64::consts::PI * 0.5) / std::f64::consts::PI;
-        Some(HitRecord::new(t, pt, normal, self.material.clone()))
+        let phi = normal.z.atan2(normal.x);
+        let theta = normal.y.asin();
+        let u = 1.0-(phi+std::f64::consts::PI) / (2.0 * std::f64::consts::PI);
+        let v = (theta + std::f64::consts::PI * 0.5) / std::f64::consts::PI;
+        Some(HitRecord::new(t, pt, normal, u, v, self.material.clone()))
       } else {
         None
       }

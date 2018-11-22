@@ -37,7 +37,7 @@ impl Material for Lambertian {
     let target = hit.p + hit.normal + random_in_unit_sphere();
     let scattered = Ray::new(hit.p, target - hit.p, ray.time);
     Some(ScatterInfo {
-      attenuation: self.texture.value(0.0, 0.0, &hit.p),
+      attenuation: self.texture.value(hit.u, hit.v, &hit.p),
       scattered
     })
   }
@@ -67,7 +67,7 @@ impl Material for Metal {
     let scattered = Ray::new(hit.p, reflected + self.fuzz * random_in_unit_sphere(), ray.time);
     if Vec3::dot(&scattered.direction, &hit.normal) > 0.0 {
       Some(ScatterInfo {
-        attenuation: self.texture.value(0.0, 0.0, &hit.p),
+        attenuation: self.texture.value(hit.u, hit.v, &hit.p),
         scattered
       })
     } else {

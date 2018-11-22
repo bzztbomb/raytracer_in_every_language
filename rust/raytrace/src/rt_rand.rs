@@ -1,8 +1,6 @@
 extern crate rand;
 
 use vec3::Vec3;
-use std::cell::RefCell;
-use rt_rand::rand::RngCore;
 
 use rt_rand::rand::random;
 

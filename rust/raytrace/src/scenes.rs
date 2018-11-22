@@ -1,3 +1,6 @@
+use std::rc::Rc;
+use std::path::Path;
+
 use vec3::Vec3;
 use hitable::*;
 use material::*;
@@ -72,6 +75,26 @@ pub fn scene_random(nx: u32, ny: u32) -> (Box<Hitable>, Camera) {
     }
 
     (result, camera)
-
 }
 
+pub fn scene_two_spheres(nx: u32, ny: u32) -> (Box<Hitable>, Camera) {
+    let look_from = Vec3::new(13.0, 2.0, 3.0);
+    let look_at = Vec3::zero();
+    let dist_to_focus = 10.0;
+    let aperture = 0.0;
+    let camera = Camera::new(&look_from, &look_at, &Vec3::new(0.0, 1.0, 0.0), 20.0, nx as f64 / ny as f64, aperture, dist_to_focus, 0.0, 1.0);
+
+    let noise: Rc<Material> = Lambertian::rc(NoiseTexture::rc(2.0));
+    let earth: Rc<Material> = Lambertian::rc(ImageTexture::rc(Path::new("map.png")));
+    let mut objs: Vec<Box<Hitable>> = vec![
+        Sphere::boxed(Vec3::new(0.0, -1000.0, 0.0), 1000.0, Rc::clone(&noise)),
+        Sphere::boxed(Vec3::new(0.0, 2.0, 0.0), 2.0, Rc::clone(&earth)),
+    ];
+
+    let mut result = Box::new(HitableList::new());
+    while let Some(obj) = objs.pop() {
+        result.add_hitable(obj);
+    }
+    (result, camera)
+
+}
