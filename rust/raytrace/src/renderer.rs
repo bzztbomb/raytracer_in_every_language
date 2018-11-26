@@ -11,14 +11,15 @@ pub struct Renderer {
   nx: u32,
   ny: u32,
   num_samples: u32,
+  default_sky: bool
 }
 
 impl Renderer {
   // TODO: Pick scene externally.
   pub fn new(nx: u32, ny: u32, ns: u32) -> Renderer {
-    let (scene, camera) = scene_two_spheres(nx, ny);
+    let (scene, camera, default_sky) = scene_cornell(nx, ny);
     Renderer {
-      scene, camera, nx, ny, num_samples: ns
+      scene, camera, nx, ny, num_samples: ns, default_sky
     }
   }
 
@@ -35,22 +36,31 @@ impl Renderer {
     c.x = c.x.sqrt();
     c.y = c.y.sqrt();
     c.z = c.z.sqrt();
+    let m = c.x.max(c.y.max(c.z));
+    if m > 1.0 {
+      c = c / m;
+    }
     c * 255.0
   }
 
   fn color(&self, r: &Ray, scene: &Box<Hitable>, depth: u32) -> Vec3 {
-    if let Some(scene_hit) = scene.hit(r, 0.0, std::f64::MAX) {
+    if let Some(scene_hit) = scene.hit(r, 0.001, std::f64::MAX) {
         if depth >= 50 {
             return Vec3::zero();
         }
+        let emitted = scene_hit.material.emit(scene_hit.u, scene_hit.v, &scene_hit.p);
         if let Some(scatter) = scene_hit.material.scatter(&r, &scene_hit) {
-            return scatter.attenuation * self.color(&scatter.scattered, scene, depth+1);
+            return emitted + (scatter.attenuation * self.color(&scatter.scattered, scene, depth+1));
         } else {
-            return Vec3::zero();
+            return emitted;
         }
     }
-    let unit_direction = r.direction.normalized();
-    let t = 0.5 * (unit_direction.y + 1.0);
-    (1.0 - t)*Vec3::one() + t*Vec3::new(0.5, 0.7, 1.0)
+    if !self.default_sky {
+      Vec3::zero()
+    } else {
+      let unit_direction = r.direction.normalized();
+      let t = 0.5 * (unit_direction.y + 1.0);
+      (1.0 - t)*Vec3::one() + t*Vec3::new(0.5, 0.7, 1.0)
+    }
   }
 }

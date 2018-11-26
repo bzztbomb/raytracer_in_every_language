@@ -8,7 +8,7 @@ use camera::*;
 use rt_rand::*;
 use texture::*;
 
-pub fn simple_scene(nx: u32, ny: u32) -> (Box<Hitable>, Camera) {
+pub fn simple_scene(nx: u32, ny: u32) -> (Box<Hitable>, Camera, bool) {
     let look_from = Vec3::new(3.0, 3.0, 2.0);
     let look_at = Vec3::new(0.0, 0.0, -1.0);
     let dist_to_focus = (look_from - look_at).length();
@@ -29,10 +29,10 @@ pub fn simple_scene(nx: u32, ny: u32) -> (Box<Hitable>, Camera) {
     // while let Some(obj) = objs.pop() {
     //     result.add_hitable(obj);
     // }
-    (result, camera)
+    (result, camera, true)
 }
 
-pub fn scene_random(nx: u32, ny: u32) -> (Box<Hitable>, Camera) {
+pub fn scene_random(nx: u32, ny: u32) -> (Box<Hitable>, Camera, bool) {
     let look_from = Vec3::new(13.0, 2.0, 3.0);
     let look_at = Vec3::zero();
     let dist_to_focus = 10.0;
@@ -74,10 +74,10 @@ pub fn scene_random(nx: u32, ny: u32) -> (Box<Hitable>, Camera) {
         }
     }
 
-    (result, camera)
+    (result, camera, true)
 }
 
-pub fn scene_two_spheres(nx: u32, ny: u32) -> (Box<Hitable>, Camera) {
+pub fn scene_two_spheres(nx: u32, ny: u32) -> (Box<Hitable>, Camera, bool) {
     let look_from = Vec3::new(13.0, 2.0, 3.0);
     let look_at = Vec3::zero();
     let dist_to_focus = 10.0;
@@ -95,6 +95,58 @@ pub fn scene_two_spheres(nx: u32, ny: u32) -> (Box<Hitable>, Camera) {
     while let Some(obj) = objs.pop() {
         result.add_hitable(obj);
     }
-    (result, camera)
+    (result, camera, true)
+}
+
+pub fn scene_simple_light(nx: u32, ny: u32) -> (Box<Hitable>, Camera, bool) {
+    let look_from = Vec3::new(13.0, 20.0, 22.0);
+    let look_at = Vec3::zero();
+    let dist_to_focus = 10.0;
+    let aperture = 0.0;
+    let camera = Camera::new(&look_from, &look_at, &Vec3::new(0.0, 1.0, 0.0), 20.0, nx as f64 / ny as f64, aperture, dist_to_focus, 0.0, 1.0);
+
+    let noise: Rc<Material> = Lambertian::rc(NoiseTexture::rc(4.0));
+    let light: Rc<Material> = DiffuseLight::rc(ConstantTexture::rc(Vec3::new(4.0, 4.0, 4.0)));
+    let mut objs: Vec<Box<Hitable>> = vec![
+        Sphere::boxed(Vec3::new(0.0, -1000.0, 0.0), 1000.0, Rc::clone(&noise)),
+        Sphere::boxed(Vec3::new(0.0, 2.0, 0.0), 2.0, Rc::clone(&noise)),
+        Sphere::boxed(Vec3::new(0.0, 7.0, 0.0), 2.0, Rc::clone(&light)),
+        Rect::xyrect(3.0, 1.0, 5.0, 3.0, -2.0, Rc::clone(&light))
+    ];
+
+    let mut result = Box::new(HitableList::new());
+    while let Some(obj) = objs.pop() {
+        result.add_hitable(obj);
+    }
+    (result, camera, false)
+}
+
+pub fn scene_cornell(nx: u32, ny: u32) -> (Box<Hitable>, Camera, bool) {
+    let look_from = Vec3::new(278.0, 278.0, -800.0);
+    let look_at = Vec3::new(278.0, 278.0, 0.0);
+    let dist_to_focus = 10.0;
+    let aperture = 0.0;
+    let vfov = 40.0;
+    let camera = Camera::new(&look_from, &look_at, &Vec3::new(0.0, 1.0, 0.0), vfov, nx as f64 / ny as f64, aperture, dist_to_focus, 0.0, 1.0);
+
+    let red: Rc<Material> = Lambertian::rc(ConstantTexture::rc(Vec3::new(0.65, 0.05, 0.05)));
+    let white: Rc<Material> = Lambertian::rc(ConstantTexture::rc(Vec3::new(0.73, 0.73, 0.73)));
+    let green: Rc<Material> = Lambertian::rc(ConstantTexture::rc(Vec3::new(0.12, 0.45, 0.15)));
+    let light: Rc<Material> = DiffuseLight::rc(ConstantTexture::rc(Vec3::new(15.0, 15.0, 15.0)));
+
+    let mut objs: Vec<Box<Hitable>> = vec![
+        Rect::yzrect(0.0, 0.0, 555.0, 555.0, 555.0, Rc::clone(&green)),
+        Rect::yzrect(0.0, 0.0, 555.0, 555.0, 0.0, Rc::clone(&red)),
+        Rect::xzrect(213.0, 227.0, 343.0, 332.0, 554.0, Rc::clone(&light)),
+        Rect::xzrect(0.0, 0.0, 555.0, 555.0, 555.0, Rc::clone(&white)),
+        Rect::xzrect(0.0, 0.0, 555.0, 555.0, 1.0, Rc::clone(&white)),
+        Rect::xyrect(0.0, 0.0, 555.0, 555.0, 555.0, Rc::clone(&white))
+    ];
+
+    let mut result = Box::new(HitableList::new());
+    while let Some(obj) = objs.pop() {
+        result.add_hitable(obj);
+    }
+    (result, camera, false)
 
 }

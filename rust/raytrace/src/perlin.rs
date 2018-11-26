@@ -26,7 +26,6 @@ impl Perlin {
     let j = pt.y.floor() as usize;
     let k = pt.z.floor() as usize;
     let mut c: [[[Vec3; 2]; 2]; 2] = [[[Vec3::zero(), Vec3::zero()], [Vec3::zero(), Vec3::zero()]], [[Vec3::zero(), Vec3::zero()], [Vec3::zero(), Vec3::zero()]]];
-    let mut cf: [[[f64; 2]; 2]; 2] = [[[0.0, 0.0], [0.0, 0.0]], [[0.0, 0.0], [0.0, 0.0]]];
     for di in 0_usize..2_usize {
       for dj in 0_usize..2_usize {
         for dk in 0_usize..2_usize {
@@ -49,22 +48,6 @@ impl Perlin {
     }
     accum.abs()
   }
-}
-
-fn triliner_interp(c: &[[[f64; 2]; 2]; 2], u: f64, v: f64, w: f64) -> f64 {
-  let mut accum = 0.0;
-  for ii in 0_usize..2_usize {
-    for ij in 0_usize..2_usize {
-      for ik in 0_usize..2_usize {
-        let i = ii as f64;
-        let j = ij as f64;
-        let k = ik as f64;
-        let kernel = (i*u + (1.0-i)*(1.0-u)) * (j*v+ (1.0-j)*(1.0-v)) * (k*w + (1.0-k)*(1.0-w));
-        accum += c[ii][ij][ik] * kernel
-      }
-    }
-  }
-  accum
 }
 
 fn perlin_interp(c: &[[[Vec3; 2]; 2]; 2], u: f64, v: f64, w: f64) -> f64 {
@@ -90,17 +73,9 @@ fn perlin_interp(c: &[[[Vec3; 2]; 2]; 2], u: f64, v: f64, w: f64) -> f64 {
 
 fn generate() -> Vec<Vec3> {
   let mut ret: Vec<Vec3> = Vec::with_capacity(256);
-  for i in 0..256 {
+  for _i in 0..256 {
     ret.push(Vec3::new(-1.0 + 2.0 * rand_f64(), -1.0 + 2.0 * rand_f64(), -1.0 + 2.0 * rand_f64()).normalized());
     // ret.push(Vec3::new(0.0, 0.25, 0.0));
-  }
-  ret
-}
-
-fn generate_float() -> Vec<f64> {
-  let mut ret: Vec<f64> = Vec::with_capacity(256);
-  for i in 0..256 {
-    ret.push(rand_f64());
   }
   ret
 }

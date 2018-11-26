@@ -4,7 +4,7 @@ use raytrace::renderer::Renderer;
 
 const NX: u32 = 400;
 const NY: u32 = 200;
-const NS: u32 = 10;
+const NS: u32 = 20;
 
 fn main() {
     let renderer = Renderer::new(NX, NY, NS);

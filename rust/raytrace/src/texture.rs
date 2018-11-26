@@ -29,7 +29,7 @@ impl ConstantTexture {
 }
 
 impl Texture for ConstantTexture {
-  fn value(&self, u: f64, v: f64, p: &Vec3) -> Vec3 {
+  fn value(&self, _u: f64, _v: f64, _p: &Vec3) -> Vec3 {
     self.color
   }
 }
@@ -86,8 +86,8 @@ impl NoiseTexture {
 }
 
 impl Texture for NoiseTexture {
-  fn value(&self, u: f64, v: f64, p: &Vec3) -> Vec3 {
-    let offset = (1.0 / 0.8) * 0.5;
+  fn value(&self, _u: f64, _v: f64, p: &Vec3) -> Vec3 {
+    // let offset = (1.0 / 0.8) * 0.5;
     // Straight noise, range is -0.8..0.8
     // Vec3::one() * ((self.perlin.noise(&(*p * self.scale)) * offset) + offset)
     // Striaght turb
@@ -115,7 +115,7 @@ impl ImageTexture {
 }
 
 impl Texture for ImageTexture {
-  fn value(&self, u: f64, v: f64, p: &Vec3) -> Vec3 {
+  fn value(&self, u: f64, v: f64, _p: &Vec3) -> Vec3 {
     let (width, height) = self.image.dimensions();
     let i = (u * width as f64).min(width as f64);
     let j = ((1.0 - v) * height as f64 - 0.001).min(height as f64);

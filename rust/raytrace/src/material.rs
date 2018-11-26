@@ -14,6 +14,9 @@ pub struct ScatterInfo {
 pub trait Material {
   // result: attenuation, scatter
   fn scatter(&self, ray: &Ray, hit: &HitRecord) -> Option<ScatterInfo>;
+  fn emit(&self, _u: f64, _v: f64, _pt: &Vec3) -> Vec3 {
+    Vec3::zero()
+  }
 }
 
 pub struct Lambertian {
@@ -139,5 +142,31 @@ impl Material for Dielectric {
         scattered: Ray::new(hit.p, refracted, ray.time)
       })
     }
+  }
+}
+
+pub struct DiffuseLight {
+  texture: Rc<Texture>,
+}
+
+impl DiffuseLight {
+  pub fn new(texture: Rc<Texture>) -> DiffuseLight {
+    DiffuseLight {
+      texture
+    }
+  }
+
+  pub fn rc(tex: Rc<Texture>) -> Rc<DiffuseLight> {
+    Rc::new(DiffuseLight::new(tex))
+  }
+}
+
+impl Material for DiffuseLight {
+  fn scatter(&self, _ray: &Ray, _hit: &HitRecord) -> Option<ScatterInfo> {
+    None
+  }
+
+  fn emit(&self, u: f64, v: f64, pt: &Vec3) -> Vec3 {
+    self.texture.value(u, v, pt)
   }
 }

@@ -292,3 +292,136 @@ impl Hitable for Sphere {
     )
   }
 }
+
+struct AARect {
+  a_index: usize,
+  b_index: usize,
+  c_index: usize,
+  a0: f64,
+  b0: f64,
+  a1: f64,
+  b1: f64,
+  c: f64,
+  material: Rc<Material>,
+  a_range: f64,
+  b_range: f64,
+}
+
+impl AARect {
+  pub fn new(a_index: usize, b_index: usize, c_index: usize, a0: f64, b0: f64, a1: f64, b1: f64, c: f64, material: Rc<Material>) -> AARect {
+    AARect {
+      a_index,
+      b_index,
+      c_index,
+      a0,
+      b0,
+      a1,
+      b1,
+      c,
+      material,
+      a_range: a1 - a0,
+      b_range: b1 - b0
+    }
+  }
+
+  pub fn boxed(a_index: usize, b_index: usize, c_index: usize, a0: f64, b0: f64, a1: f64, b1: f64, c: f64, material: Rc<Material>) -> Box<AARect> {
+    Box::new(AARect::new(a_index, b_index, c_index, a0, b0, a1, b1, c, material))
+  }
+}
+
+impl Hitable for AARect {
+  fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+    if ray.direction[self.c_index] == 0.0 {
+      // println!("Case 1");
+      return None;
+    }
+    let t = (self.c - ray.origin[self.c_index]) / ray.direction[self.c_index];
+    if t < t_min || t > t_max {
+      // println!("Case 2, t: {} t_min: {} t_max: {}", t, t_min, t_max);
+      return None
+    }
+    let a = ray.origin[self.a_index] + t * ray.direction[self.a_index];
+    if a < self.a0 || a > self.a1 {
+      // println!("Case 3");
+      return None
+    }
+    let b = ray.origin[self.b_index] + t * ray.direction[self.b_index];
+    if b < self.b0 || b > self.b1 {
+      // println!("Case 4");
+      return None
+    }
+    let u = (a - self.a0) / self.a_range;
+    let v = (b - self.b0) / self.b_range;
+
+    let pt = ray.point_at_parameter(t);
+    let mut normal = Vec3::zero();
+    normal[self.c_index] = 1.0;
+    Some(HitRecord::new(t, pt, normal, u, v, self.material.clone()))
+  }
+
+  fn bounding_box(&self, _time0: f64, _time1: f64) -> Aabb {
+    let eplison = 0.0001;
+    let mut b_min = Vec3::zero();
+    b_min[self.a_index] = self.a0;
+    b_min[self.b_index] = self.b0;
+    b_min[self.c_index] = self.c - eplison;
+    let mut b_max = Vec3::zero();
+    b_max[self.a_index] = self.a1;
+    b_max[self.b_index] = self.b1;
+    b_max[self.c_index] = self.c + eplison;
+    Aabb::new(b_min, b_max)
+  }
+}
+
+pub struct Rect {
+  //
+}
+
+impl Rect {
+  pub fn xyrect(x0: f64, y0: f64, x1: f64, y1: f64, k: f64, material: Rc<Material>) -> Box<Hitable> {
+    AARect::boxed(0, 1, 2, x0, y0, x1, y1, k, material)
+  }
+
+  pub fn xzrect(x0: f64, z0: f64, x1: f64, z1: f64, k: f64, material: Rc<Material>) -> Box<Hitable> {
+    AARect::boxed(0, 2, 1, x0, z0, x1, z1, k, material)
+  }
+
+  pub fn yzrect(y0: f64, z0: f64, y1: f64, z1: f64, k: f64, material: Rc<Material>) -> Box<Hitable> {
+    AARect::boxed(1, 2, 0, y0, z0, y1, z1, k, material)
+  }
+}
+
+#[cfg(test)]
+mod tests {
+
+  use vec3::Vec3;
+  use material::Lambertian;
+  use texture::ConstantTexture;
+  use ray::Ray;
+  use hitable::*;
+
+  #[test]
+  fn test_xzrect() {
+    let mat: Rc<Material> = Lambertian::rc(ConstantTexture::rc(Vec3::new(1.0, 1.0, 1.0)));
+    let xz = Rect::xzrect(0.0, 0.0, 555.0, 555.0, 0.0, Rc::clone(&mat));
+    let ray = Ray::new(Vec3::new(100.0, 4.0, 100.0), Vec3::new(0.0, -1.0, 0.0), 0.0);
+    let hit = xz.hit(&ray, 0.0, std::f64::MAX);
+
+    assert!(hit.is_some());
+    if let Some(hit_record) = hit {
+      assert_eq!(hit_record.t, 4.0);
+      assert_eq!(hit_record.p, Vec3::new(100.0, 0.0, 100.0));
+      assert_eq!(hit_record.normal, Vec3::new(0.0, 1.0, 0.0));
+    }
+
+    let xz2 = Rect::xzrect(213.0, 227.0, 343.0, 332.0, 554.0, Rc::clone(&mat));
+    let ray2 = Ray::new(Vec3::new(278.0, 278.0, -800.0), Vec3::new(0.0, 2.5477916398634193, 10.0), 0.0);
+    let hit2 = xz2.hit(&ray2, 0.0, std::f64::MAX);
+    assert!(hit2.is_some());
+    if let Some(hit2) = hit2 {
+      assert_eq!(hit2.t, 108.32910968135356);
+      assert_eq!(hit2.p, Vec3::new(278.0, 554.0, 283.29109681353566));
+      assert_eq!(hit2.normal, Vec3::new(0.0, 1.0, 0.0));
+    }
+  }
+}
