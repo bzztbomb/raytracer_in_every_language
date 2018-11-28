@@ -1,6 +1,5 @@
 use std::rc::Rc;
 use std::usize;
-use std::mem;
 use std::fmt;
 
 use vec3::Vec3;
@@ -43,8 +42,10 @@ pub trait Hitable {
   fn bounding_box(&self, _time0: f64, _time1: f64) -> Aabb;
 }
 
+pub type HitablePtr = Rc<Hitable>;
+
 pub struct HitableList {
-  list: Vec<Box<Hitable>>,
+  list: Vec<HitablePtr>,
 }
 
 impl HitableList {
@@ -54,7 +55,7 @@ impl HitableList {
     }
   }
 
-  pub fn add_hitable(&mut self, hitable: Box<Hitable>) {
+  pub fn add_hitable(&mut self, hitable: HitablePtr) {
     self.list.push(hitable);
   }
 }
@@ -79,14 +80,14 @@ impl Hitable for HitableList {
 }
 
 struct BvhNode {
-  left: Option<Box<Hitable>>,
-  right: Option<Box<Hitable>>,
+  left: Option<HitablePtr>,
+  right: Option<HitablePtr>,
   bbox: Aabb,
 }
 
 impl BvhNode {
-  fn boxed() -> Box<BvhNode> {
-    Box::new(BvhNode {
+  fn hitable_ptr() -> Rc<BvhNode> {
+    Rc::new(BvhNode {
       left: None,
       right: None,
       bbox: Aabb::new(Vec3::zero(), Vec3::zero()),
@@ -128,11 +129,11 @@ impl Hitable for BvhNode {
   }
 }
 pub struct Bvh {
-  root: Option<Box<Hitable>>,
+  root: Option<HitablePtr>,
 }
 
 impl Bvh {
-  pub fn new(mut hitables: Vec<Box<Hitable>>, time0: f64, time1: f64) -> Bvh {
+  pub fn new(mut hitables: Vec<HitablePtr>, time0: f64, time1: f64) -> Bvh {
     let mut indices: Vec<usize> = Vec::with_capacity(hitables.len());
     for i in 0..hitables.len() {
       indices.push(i);
@@ -142,56 +143,59 @@ impl Bvh {
     }
   }
 
-  fn build(hitables: &mut Vec<Box<Hitable>>, hitable_indices: &mut Vec<usize>, time0: f64, time1: f64) -> Option<Box<Hitable>> {
+  fn build(hitables: &mut Vec<HitablePtr>, hitable_indices: &mut Vec<usize>, time0: f64, time1: f64) -> Option<HitablePtr> {
     // Alloc our bvh node
-    let mut new_node = BvhNode::boxed();
-    // We've hit the leaves
-    let indices_len = hitable_indices.len();
-    match indices_len {
-      0 => panic!("Invalid!"),
-      1 => {
-        new_node.bbox = hitables[hitable_indices[0]].bounding_box(time0, time1);
-        new_node.left = Some(mem::replace(&mut hitables[hitable_indices[0]], BvhNode::boxed()));
-      },
-      2 => {
-        new_node.bbox = Aabb::surrounding_box(
-          &hitables[hitable_indices[0]].bounding_box(time0, time1),
-          &hitables[hitable_indices[1]].bounding_box(time0, time1)
-        );
-        new_node.left = Some(mem::replace(&mut hitables[hitable_indices[0]], BvhNode::boxed()));
-        new_node.right = Some(mem::replace(&mut hitables[hitable_indices[1]], BvhNode::boxed()));
-      },
-      _ => {
-        // Sort and divide the list
-        let axis: usize = rand_usize() % 3;
-        hitable_indices.sort_unstable_by(|a, b| {
-          let a_aabb = hitables[*a].bounding_box(time0, time1);
-          let b_aabb = hitables[*b].bounding_box(time0, time1);
-          if let Some(res) = a_aabb.min[axis].partial_cmp(&b_aabb.min[axis]) {
-            res
+    let mut new_node_rc = BvhNode::hitable_ptr();
+    {
+      let new_node = Rc::get_mut(&mut new_node_rc).unwrap();
+      // We've hit the leaves
+      let indices_len = hitable_indices.len();
+      match indices_len {
+        0 => panic!("Invalid!"),
+        1 => {
+          new_node.bbox = hitables[hitable_indices[0]].bounding_box(time0, time1);
+          new_node.left = Some(Rc::clone(&hitables[hitable_indices[0]]));
+        },
+        2 => {
+          new_node.bbox = Aabb::surrounding_box(
+            &hitables[hitable_indices[0]].bounding_box(time0, time1),
+            &hitables[hitable_indices[1]].bounding_box(time0, time1)
+          );
+          new_node.left = Some(Rc::clone(&hitables[hitable_indices[0]]));
+          new_node.right = Some(Rc::clone(&hitables[hitable_indices[1]]));
+        },
+        _ => {
+          // Sort and divide the list
+          let axis: usize = rand_usize() % 3;
+          hitable_indices.sort_unstable_by(|a, b| {
+            let a_aabb = hitables[*a].bounding_box(time0, time1);
+            let b_aabb = hitables[*b].bounding_box(time0, time1);
+            if let Some(res) = a_aabb.min[axis].partial_cmp(&b_aabb.min[axis]) {
+              res
+            } else {
+              panic!("No NANS");
+            }
+          });
+          let mut right_indices = hitable_indices.split_off(indices_len / 2);
+          new_node.left = Bvh::build(hitables, hitable_indices, time0, time1);
+          new_node.right = Bvh::build(hitables, &mut right_indices, time0, time1);
+          let bbox;
+          if let Some(ref l) = new_node.left {
+            if let Some(ref r) = new_node.right {
+              bbox = Aabb::surrounding_box(
+                &l.bounding_box(time0, time1),
+                &r.bounding_box(time0, time1));
+            } else {
+              panic!("I should be defined");
+            }
           } else {
-            panic!("No NANS");
+            panic!("I should be defined!");
           }
-        });
-        let mut right_indices = hitable_indices.split_off(indices_len / 2);
-        new_node.left = Bvh::build(hitables, hitable_indices, time0, time1);
-        new_node.right = Bvh::build(hitables, &mut right_indices, time0, time1);
-        let bbox;
-        if let Some(ref l) = new_node.left {
-          if let Some(ref r) = new_node.right {
-            bbox = Aabb::surrounding_box(
-              &l.bounding_box(time0, time1),
-              &r.bounding_box(time0, time1));
-          } else {
-            panic!("I should be defined");
-          }
-        } else {
-          panic!("I should be defined!");
+          new_node.bbox = bbox;
         }
-        new_node.bbox = bbox;
       }
     }
-    Some(new_node)
+    Some(new_node_rc)
   }
 }
 
@@ -214,7 +218,37 @@ impl Hitable for Bvh {
       }
     }
   }
+}
 
+pub struct FlipNormals {
+  hitable: HitablePtr,
+}
+
+impl FlipNormals {
+  pub fn new(hitable: HitablePtr) -> FlipNormals {
+    FlipNormals {
+      hitable: Rc::clone(&hitable)
+    }
+  }
+
+  pub fn hitable_ptr(hitable: HitablePtr) -> Rc<FlipNormals> {
+    Rc::new(FlipNormals::new(hitable))
+  }
+}
+
+impl Hitable for FlipNormals {
+  fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+    if let Some(mut ret) = self.hitable.hit(ray, t_min, t_max) {
+      ret.normal = ret.normal * -1.0;
+      Some(ret)
+    } else {
+      None
+    }
+  }
+
+  fn bounding_box(&self, time0: f64, time1: f64) -> Aabb {
+    self.hitable.bounding_box(time0, time1)
+  }
 }
 
 pub struct Sphere {
@@ -233,8 +267,8 @@ pub struct Sphere {
     }
   }
 
-  pub fn boxed(center: Vec3, radius: f64, material: Rc<Material>) -> Box<Sphere> {
-    Box::new(Sphere::new(center, radius, material))
+  pub fn hitable_ptr(center: Vec3, radius: f64, material: Rc<Material>) -> Rc<Sphere> {
+    Rc::new(Sphere::new(center, radius, material))
   }
 
   pub fn new_moving(center0: Vec3, center1: Vec3, time0: f64, time1: f64, radius: f64, material: Rc<Material>) -> Sphere {
@@ -245,8 +279,8 @@ pub struct Sphere {
     }
   }
 
-  pub fn boxed_moving(c0: Vec3, c1: Vec3, time0: f64, time1: f64, radius: f64, material: Rc<Material>) -> Box<Sphere> {
-    Box::new(Sphere::new_moving(c0, c1, time0, time1, radius, material))
+  pub fn hitable_ptr_moving(c0: Vec3, c1: Vec3, time0: f64, time1: f64, radius: f64, material: Rc<Material>) -> Rc<Sphere> {
+    Rc::new(Sphere::new_moving(c0, c1, time0, time1, radius, material))
   }
 }
 
@@ -324,8 +358,8 @@ impl AARect {
     }
   }
 
-  pub fn boxed(a_index: usize, b_index: usize, c_index: usize, a0: f64, b0: f64, a1: f64, b1: f64, c: f64, material: Rc<Material>) -> Box<AARect> {
-    Box::new(AARect::new(a_index, b_index, c_index, a0, b0, a1, b1, c, material))
+  pub fn hitable_ptr(a_index: usize, b_index: usize, c_index: usize, a0: f64, b0: f64, a1: f64, b1: f64, c: f64, material: Rc<Material>) -> Rc<AARect> {
+    Rc::new(AARect::new(a_index, b_index, c_index, a0, b0, a1, b1, c, material))
   }
 }
 
@@ -378,16 +412,16 @@ pub struct Rect {
 }
 
 impl Rect {
-  pub fn xyrect(x0: f64, y0: f64, x1: f64, y1: f64, k: f64, material: Rc<Material>) -> Box<Hitable> {
-    AARect::boxed(0, 1, 2, x0, y0, x1, y1, k, material)
+  pub fn xyrect(x0: f64, y0: f64, x1: f64, y1: f64, k: f64, material: Rc<Material>) -> HitablePtr {
+    AARect::hitable_ptr(0, 1, 2, x0, y0, x1, y1, k, material)
   }
 
-  pub fn xzrect(x0: f64, z0: f64, x1: f64, z1: f64, k: f64, material: Rc<Material>) -> Box<Hitable> {
-    AARect::boxed(0, 2, 1, x0, z0, x1, z1, k, material)
+  pub fn xzrect(x0: f64, z0: f64, x1: f64, z1: f64, k: f64, material: Rc<Material>) -> HitablePtr {
+    AARect::hitable_ptr(0, 2, 1, x0, z0, x1, z1, k, material)
   }
 
-  pub fn yzrect(y0: f64, z0: f64, y1: f64, z1: f64, k: f64, material: Rc<Material>) -> Box<Hitable> {
-    AARect::boxed(1, 2, 0, y0, z0, y1, z1, k, material)
+  pub fn yzrect(y0: f64, z0: f64, y1: f64, z1: f64, k: f64, material: Rc<Material>) -> HitablePtr {
+    AARect::hitable_ptr(1, 2, 0, y0, z0, y1, z1, k, material)
   }
 }
 
@@ -402,7 +436,7 @@ mod tests {
 
   #[test]
   fn test_xzrect() {
-    let mat: Rc<Material> = Lambertian::rc(ConstantTexture::rc(Vec3::new(1.0, 1.0, 1.0)));
+    let mat: Rc<Material> = Lambertian::rc(CosnstantTexture::rc(Vec3::new(1.0, 1.0, 1.0)));
     let xz = Rect::xzrect(0.0, 0.0, 555.0, 555.0, 0.0, Rc::clone(&mat));
     let ray = Ray::new(Vec3::new(100.0, 4.0, 100.0), Vec3::new(0.0, -1.0, 0.0), 0.0);
     let hit = xz.hit(&ray, 0.0, std::f64::MAX);

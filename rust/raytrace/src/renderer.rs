@@ -1,12 +1,12 @@
 use camera::Camera;
-use hitable::Hitable;
+use hitable::HitablePtr;
 use scenes::*;
 use vec3::Vec3;
 use ray::Ray;
 use rt_rand::*;
 
 pub struct Renderer {
-  scene: Box<Hitable>,
+  scene: HitablePtr,
   camera: Camera,
   nx: u32,
   ny: u32,
@@ -43,7 +43,7 @@ impl Renderer {
     c * 255.0
   }
 
-  fn color(&self, r: &Ray, scene: &Box<Hitable>, depth: u32) -> Vec3 {
+  fn color(&self, r: &Ray, scene: &HitablePtr, depth: u32) -> Vec3 {
     if let Some(scene_hit) = scene.hit(r, 0.001, std::f64::MAX) {
         if depth >= 50 {
             return Vec3::zero();
