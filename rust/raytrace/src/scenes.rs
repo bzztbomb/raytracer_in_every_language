@@ -7,6 +7,7 @@ use material::*;
 use camera::*;
 use rt_rand::*;
 use texture::*;
+use aabb::Aabb;
 
 pub fn simple_scene(nx: u32, ny: u32) -> (HitablePtr, Camera, bool) {
     let look_from = Vec3::new(3.0, 3.0, 2.0);
@@ -150,7 +151,9 @@ pub fn scene_cornell(nx: u32, ny: u32) -> (HitablePtr, Camera, bool) {
         Rect::xzrect(213.0, 227.0, 343.0, 332.0, 554.0, Rc::clone(&light)),
         FlipNormals::hitable_ptr(Rect::xzrect(0.0, 0.0, 555.0, 555.0, 555.0, Rc::clone(&white))),
         Rect::xzrect(0.0, 0.0, 555.0, 555.0, 1.0, Rc::clone(&white)),
-        FlipNormals::hitable_ptr(Rect::xyrect(0.0, 0.0, 555.0, 555.0, 555.0, Rc::clone(&white)))
+        FlipNormals::hitable_ptr(Rect::xyrect(0.0, 0.0, 555.0, 555.0, 555.0, Rc::clone(&white))),
+        Translate::hitable_ptr(RotateY::hitable_ptr(AabbBox::hitable_ptr(Aabb::new(Vec3::zero(), Vec3::new(165.0, 165.0, 165.0)), Rc::clone(&white)), -18.0), Vec3::new(130.0, 0.0, 65.0)),
+        Translate::hitable_ptr(RotateY::hitable_ptr(AabbBox::hitable_ptr(Aabb::new(Vec3::zero(), Vec3::new(165.0, 330.0, 165.0)), Rc::clone(&white)), 15.0), Vec3::new(265.0, 0.0, 295.0)),
     ];
 
     let mut result_ptr = Rc::new(HitableList::new());

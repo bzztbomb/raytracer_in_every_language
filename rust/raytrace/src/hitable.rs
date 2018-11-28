@@ -251,6 +251,115 @@ impl Hitable for FlipNormals {
   }
 }
 
+pub struct Translate {
+  hitable: HitablePtr,
+  offset: Vec3,
+}
+
+impl Translate {
+  pub fn new(hitable: HitablePtr, offset: Vec3) -> Translate {
+    Translate {
+      hitable,
+      offset
+    }
+  }
+
+  pub fn hitable_ptr(hitable: HitablePtr, offset: Vec3) -> HitablePtr {
+    Rc::new(Translate::new(hitable, offset))
+  }
+}
+
+impl Hitable for Translate {
+  fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+    let ray_moved = Ray::new(ray.origin - self.offset, ray.direction, ray.time);
+    if let Some(mut ret) = self.hitable.hit(&ray_moved, t_min, t_max) {
+      ret.p = ret.p + self.offset;
+      Some(ret)
+    } else {
+      None
+    }
+  }
+
+  fn bounding_box(&self, time0: f64, time1: f64) -> Aabb {
+    let mut ret = self.hitable.bounding_box(time0, time1);
+    ret.min = ret.min + self.offset;
+    ret.max = ret.max + self.offset;
+    ret
+  }
+}
+
+pub struct RotateY {
+  hitable: HitablePtr,
+  sin_theta: f64,
+  cos_theta: f64,
+  aabb: Aabb
+}
+
+impl RotateY {
+  pub fn new(hitable: HitablePtr, angle_degrees: f64) -> RotateY {
+    let radians = angle_degrees * (std::f64::consts::PI / 180.0);
+    let sin_theta = radians.sin();
+    let cos_theta = radians.cos();
+    let aabb = hitable.bounding_box(0.0, std::f64::MAX);
+    let m = std::f64::MAX;
+    let mut minb = Vec3::new(m, m, m);
+    let mut maxb = minb * -1.0;
+    for i in 0..2 {
+      for j in 0..2 {
+        for k in 0..2 {
+          let x = i as f64 * aabb.max.x + (1.0 - i as f64) * aabb.min.x;
+          let y = j as f64 * aabb.max.y + (1.0 - j as f64) * aabb.min.y;
+          let z = k as f64 * aabb.max.z + (1.0 - k as f64) * aabb.min.z;
+          let newx = cos_theta * x + sin_theta * z;
+          let newz = -sin_theta * x + cos_theta * z;
+          let tester = Vec3::new(newx, y, newz);
+          for c in 0..3 {
+            minb[c] = minb[c].min(tester[c]);
+            maxb[c] = maxb[c].max(tester[c]);
+          }
+        }
+      }
+    }
+    RotateY {
+      hitable,
+      sin_theta,
+      cos_theta,
+      aabb: Aabb::new(minb, maxb)
+    }
+  }
+
+  pub fn hitable_ptr(hitable: HitablePtr, angle_degrees: f64) -> Rc<RotateY> {
+    Rc::new(RotateY::new(hitable, angle_degrees))
+  }
+
+  fn rotate_vec3(&self, v: Vec3) -> Vec3 {
+    Vec3::new(self.cos_theta * v.x - self.sin_theta * v.z, v.y, self.sin_theta * v.x + self.cos_theta * v.z)
+  }
+
+  fn inverse_rotate_vec3(&self, v: Vec3) -> Vec3 {
+    Vec3::new(self.cos_theta * v.x + self.sin_theta * v.z, v.y, -self.sin_theta * v.x + self.cos_theta * v.z)
+  }
+}
+
+impl Hitable for RotateY {
+  fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+    let origin = self.rotate_vec3(ray.origin);
+    let direction = self.rotate_vec3(ray.direction);
+    let rotated_ray = Ray::new(origin, direction, ray.time);
+    if let Some(mut ret) = self.hitable.hit(&rotated_ray, t_min, t_max) {
+      ret.p = self.inverse_rotate_vec3(ret.p);
+      ret.normal = self.inverse_rotate_vec3(ret.normal);
+      Some(ret)
+    } else {
+      None
+    }
+  }
+
+  fn bounding_box(&self, _time0: f64, _time1: f64) -> Aabb {
+    self.aabb.clone()
+  }
+}
+
 pub struct Sphere {
   radius: f64,
   material: Rc<Material>,
@@ -422,6 +531,41 @@ impl Rect {
 
   pub fn yzrect(y0: f64, z0: f64, y1: f64, z1: f64, k: f64, material: Rc<Material>) -> HitablePtr {
     AARect::hitable_ptr(1, 2, 0, y0, z0, y1, z1, k, material)
+  }
+}
+
+pub struct AabbBox {
+  aabb: Aabb,
+  faces: HitableList,
+}
+
+impl AabbBox {
+  pub fn new(aabb: Aabb, material: Rc<Material>) -> AabbBox {
+    let mut faces = HitableList::new();
+    faces.add_hitable(Rect::xyrect(aabb.min.x, aabb.min.y, aabb.max.x, aabb.max.y, aabb.max.z, Rc::clone(&material)));
+    faces.add_hitable(FlipNormals::hitable_ptr(Rect::xyrect(aabb.min.x, aabb.min.y, aabb.max.x, aabb.max.y, aabb.min.z, Rc::clone(&material))));
+    faces.add_hitable(Rect::xzrect(aabb.min.x, aabb.min.z, aabb.max.x, aabb.max.z, aabb.max.y, Rc::clone(&material)));
+    faces.add_hitable(FlipNormals::hitable_ptr(Rect::xzrect(aabb.min.x, aabb.min.z, aabb.max.x, aabb.max.z, aabb.min.y, Rc::clone(&material))));
+    faces.add_hitable(Rect::yzrect(aabb.min.y, aabb.min.z, aabb.max.y, aabb.max.z, aabb.max.x, Rc::clone(&material)));
+    faces.add_hitable(FlipNormals::hitable_ptr(Rect::yzrect(aabb.min.y, aabb.min.z, aabb.max.y, aabb.max.z, aabb.max.y, Rc::clone(&material))));
+    AabbBox {
+      aabb,
+      faces
+    }
+  }
+
+  pub fn hitable_ptr(aabb: Aabb, material: Rc<Material>) -> Rc<AabbBox> {
+    Rc::new(AabbBox::new(aabb, material))
+  }
+}
+
+impl Hitable for AabbBox {
+  fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+    self.faces.hit(ray, t_min, t_max)
+  }
+
+  fn bounding_box(&self, _time0: f64, _time1: f64) -> Aabb {
+    self.aabb.clone()
   }
 }
 
