@@ -1,10 +1,10 @@
-use std::rc::Rc;
+use std::sync::Arc;
 use std::usize;
 use std::fmt;
 
 use vec3::Vec3;
 use ray::Ray;
-use material::Material;
+use material::MaterialPtr;
 use aabb::Aabb;
 use rt_rand::*;
 
@@ -15,11 +15,11 @@ pub struct HitRecord {
   pub normal: Vec3,
   pub u: f64,
   pub v: f64,
-  pub material: Rc<Material>
+  pub material: MaterialPtr
 }
 
 impl HitRecord {
-  fn new(t: f64, p: Vec3, normal: Vec3, u: f64, v: f64, material: Rc<Material>) -> HitRecord {
+  fn new(t: f64, p: Vec3, normal: Vec3, u: f64, v: f64, material: MaterialPtr) -> HitRecord {
     HitRecord {
       t: t,
       p: p,
@@ -42,7 +42,7 @@ pub trait Hitable {
   fn bounding_box(&self, _time0: f64, _time1: f64) -> Aabb;
 }
 
-pub type HitablePtr = Rc<Hitable>;
+pub type HitablePtr = Arc<Hitable + Sync + Send>;
 
 pub struct HitableList {
   list: Vec<HitablePtr>,
@@ -86,8 +86,8 @@ struct BvhNode {
 }
 
 impl BvhNode {
-  fn hitable_ptr() -> Rc<BvhNode> {
-    Rc::new(BvhNode {
+  fn hitable_ptr() -> Arc<BvhNode> {
+    Arc::new(BvhNode {
       left: None,
       right: None,
       bbox: Aabb::new(Vec3::zero(), Vec3::zero()),
@@ -147,22 +147,22 @@ impl Bvh {
     // Alloc our bvh node
     let mut new_node_rc = BvhNode::hitable_ptr();
     {
-      let new_node = Rc::get_mut(&mut new_node_rc).unwrap();
+      let new_node = Arc::get_mut(&mut new_node_rc).unwrap();
       // We've hit the leaves
       let indices_len = hitable_indices.len();
       match indices_len {
         0 => panic!("Invalid!"),
         1 => {
           new_node.bbox = hitables[hitable_indices[0]].bounding_box(time0, time1);
-          new_node.left = Some(Rc::clone(&hitables[hitable_indices[0]]));
+          new_node.left = Some(Arc::clone(&hitables[hitable_indices[0]]));
         },
         2 => {
           new_node.bbox = Aabb::surrounding_box(
             &hitables[hitable_indices[0]].bounding_box(time0, time1),
             &hitables[hitable_indices[1]].bounding_box(time0, time1)
           );
-          new_node.left = Some(Rc::clone(&hitables[hitable_indices[0]]));
-          new_node.right = Some(Rc::clone(&hitables[hitable_indices[1]]));
+          new_node.left = Some(Arc::clone(&hitables[hitable_indices[0]]));
+          new_node.right = Some(Arc::clone(&hitables[hitable_indices[1]]));
         },
         _ => {
           // Sort and divide the list
@@ -227,12 +227,12 @@ pub struct FlipNormals {
 impl FlipNormals {
   pub fn new(hitable: HitablePtr) -> FlipNormals {
     FlipNormals {
-      hitable: Rc::clone(&hitable)
+      hitable: Arc::clone(&hitable)
     }
   }
 
-  pub fn hitable_ptr(hitable: HitablePtr) -> Rc<FlipNormals> {
-    Rc::new(FlipNormals::new(hitable))
+  pub fn hitable_ptr(hitable: HitablePtr) -> Arc<FlipNormals> {
+    Arc::new(FlipNormals::new(hitable))
   }
 }
 
@@ -265,7 +265,7 @@ impl Translate {
   }
 
   pub fn hitable_ptr(hitable: HitablePtr, offset: Vec3) -> HitablePtr {
-    Rc::new(Translate::new(hitable, offset))
+    Arc::new(Translate::new(hitable, offset))
   }
 }
 
@@ -328,8 +328,8 @@ impl RotateY {
     }
   }
 
-  pub fn hitable_ptr(hitable: HitablePtr, angle_degrees: f64) -> Rc<RotateY> {
-    Rc::new(RotateY::new(hitable, angle_degrees))
+  pub fn hitable_ptr(hitable: HitablePtr, angle_degrees: f64) -> Arc<RotateY> {
+    Arc::new(RotateY::new(hitable, angle_degrees))
   }
 
   fn rotate_vec3(&self, v: Vec3) -> Vec3 {
@@ -362,13 +362,13 @@ impl Hitable for RotateY {
 
 pub struct Sphere {
   radius: f64,
-  material: Rc<Material>,
-  center: Box<Fn(f64) -> Vec3>,
+  material: MaterialPtr,
+  center: Box<Fn(f64) -> Vec3 + Sync + Send>,
 }
 
  impl Sphere {
 
-   pub fn new(c: Vec3, radius: f64, material: Rc<Material>) -> Sphere {
+   pub fn new(c: Vec3, radius: f64, material: MaterialPtr) -> Sphere {
     Sphere {
       center: Box::new(move |_| c),
       radius,
@@ -376,11 +376,11 @@ pub struct Sphere {
     }
   }
 
-  pub fn hitable_ptr(center: Vec3, radius: f64, material: Rc<Material>) -> Rc<Sphere> {
-    Rc::new(Sphere::new(center, radius, material))
+  pub fn hitable_ptr(center: Vec3, radius: f64, material: MaterialPtr) -> Arc<Sphere> {
+    Arc::new(Sphere::new(center, radius, material))
   }
 
-  pub fn new_moving(center0: Vec3, center1: Vec3, time0: f64, time1: f64, radius: f64, material: Rc<Material>) -> Sphere {
+  pub fn new_moving(center0: Vec3, center1: Vec3, time0: f64, time1: f64, radius: f64, material: MaterialPtr) -> Sphere {
     Sphere {
       center: Box::new(move |t| center0 + ((t - time0) / (time1 - time0)) * (center1 - center0) ),
       radius,
@@ -388,8 +388,8 @@ pub struct Sphere {
     }
   }
 
-  pub fn hitable_ptr_moving(c0: Vec3, c1: Vec3, time0: f64, time1: f64, radius: f64, material: Rc<Material>) -> Rc<Sphere> {
-    Rc::new(Sphere::new_moving(c0, c1, time0, time1, radius, material))
+  pub fn hitable_ptr_moving(c0: Vec3, c1: Vec3, time0: f64, time1: f64, radius: f64, material: MaterialPtr) -> Arc<Sphere> {
+    Arc::new(Sphere::new_moving(c0, c1, time0, time1, radius, material))
   }
 }
 
@@ -445,13 +445,13 @@ struct AARect {
   a1: f64,
   b1: f64,
   c: f64,
-  material: Rc<Material>,
+  material: MaterialPtr,
   a_range: f64,
   b_range: f64,
 }
 
 impl AARect {
-  pub fn new(a_index: usize, b_index: usize, c_index: usize, a0: f64, b0: f64, a1: f64, b1: f64, c: f64, material: Rc<Material>) -> AARect {
+  pub fn new(a_index: usize, b_index: usize, c_index: usize, a0: f64, b0: f64, a1: f64, b1: f64, c: f64, material: MaterialPtr) -> AARect {
     AARect {
       a_index,
       b_index,
@@ -467,8 +467,8 @@ impl AARect {
     }
   }
 
-  pub fn hitable_ptr(a_index: usize, b_index: usize, c_index: usize, a0: f64, b0: f64, a1: f64, b1: f64, c: f64, material: Rc<Material>) -> Rc<AARect> {
-    Rc::new(AARect::new(a_index, b_index, c_index, a0, b0, a1, b1, c, material))
+  pub fn hitable_ptr(a_index: usize, b_index: usize, c_index: usize, a0: f64, b0: f64, a1: f64, b1: f64, c: f64, material: MaterialPtr) -> Arc<AARect> {
+    Arc::new(AARect::new(a_index, b_index, c_index, a0, b0, a1, b1, c, material))
   }
 }
 
@@ -521,15 +521,15 @@ pub struct Rect {
 }
 
 impl Rect {
-  pub fn xyrect(x0: f64, y0: f64, x1: f64, y1: f64, k: f64, material: Rc<Material>) -> HitablePtr {
+  pub fn xyrect(x0: f64, y0: f64, x1: f64, y1: f64, k: f64, material: MaterialPtr) -> HitablePtr {
     AARect::hitable_ptr(0, 1, 2, x0, y0, x1, y1, k, material)
   }
 
-  pub fn xzrect(x0: f64, z0: f64, x1: f64, z1: f64, k: f64, material: Rc<Material>) -> HitablePtr {
+  pub fn xzrect(x0: f64, z0: f64, x1: f64, z1: f64, k: f64, material: MaterialPtr) -> HitablePtr {
     AARect::hitable_ptr(0, 2, 1, x0, z0, x1, z1, k, material)
   }
 
-  pub fn yzrect(y0: f64, z0: f64, y1: f64, z1: f64, k: f64, material: Rc<Material>) -> HitablePtr {
+  pub fn yzrect(y0: f64, z0: f64, y1: f64, z1: f64, k: f64, material: MaterialPtr) -> HitablePtr {
     AARect::hitable_ptr(1, 2, 0, y0, z0, y1, z1, k, material)
   }
 }
@@ -540,22 +540,22 @@ pub struct AabbBox {
 }
 
 impl AabbBox {
-  pub fn new(aabb: Aabb, material: Rc<Material>) -> AabbBox {
+  pub fn new(aabb: Aabb, material: MaterialPtr) -> AabbBox {
     let mut faces = HitableList::new();
-    faces.add_hitable(Rect::xyrect(aabb.min.x, aabb.min.y, aabb.max.x, aabb.max.y, aabb.max.z, Rc::clone(&material)));
-    faces.add_hitable(FlipNormals::hitable_ptr(Rect::xyrect(aabb.min.x, aabb.min.y, aabb.max.x, aabb.max.y, aabb.min.z, Rc::clone(&material))));
-    faces.add_hitable(Rect::xzrect(aabb.min.x, aabb.min.z, aabb.max.x, aabb.max.z, aabb.max.y, Rc::clone(&material)));
-    faces.add_hitable(FlipNormals::hitable_ptr(Rect::xzrect(aabb.min.x, aabb.min.z, aabb.max.x, aabb.max.z, aabb.min.y, Rc::clone(&material))));
-    faces.add_hitable(Rect::yzrect(aabb.min.y, aabb.min.z, aabb.max.y, aabb.max.z, aabb.max.x, Rc::clone(&material)));
-    faces.add_hitable(FlipNormals::hitable_ptr(Rect::yzrect(aabb.min.y, aabb.min.z, aabb.max.y, aabb.max.z, aabb.max.y, Rc::clone(&material))));
+    faces.add_hitable(Rect::xyrect(aabb.min.x, aabb.min.y, aabb.max.x, aabb.max.y, aabb.max.z, Arc::clone(&material)));
+    faces.add_hitable(FlipNormals::hitable_ptr(Rect::xyrect(aabb.min.x, aabb.min.y, aabb.max.x, aabb.max.y, aabb.min.z, Arc::clone(&material))));
+    faces.add_hitable(Rect::xzrect(aabb.min.x, aabb.min.z, aabb.max.x, aabb.max.z, aabb.max.y, Arc::clone(&material)));
+    faces.add_hitable(FlipNormals::hitable_ptr(Rect::xzrect(aabb.min.x, aabb.min.z, aabb.max.x, aabb.max.z, aabb.min.y, Arc::clone(&material))));
+    faces.add_hitable(Rect::yzrect(aabb.min.y, aabb.min.z, aabb.max.y, aabb.max.z, aabb.max.x, Arc::clone(&material)));
+    faces.add_hitable(FlipNormals::hitable_ptr(Rect::yzrect(aabb.min.y, aabb.min.z, aabb.max.y, aabb.max.z, aabb.max.y, Arc::clone(&material))));
     AabbBox {
       aabb,
       faces
     }
   }
 
-  pub fn hitable_ptr(aabb: Aabb, material: Rc<Material>) -> Rc<AabbBox> {
-    Rc::new(AabbBox::new(aabb, material))
+  pub fn hitable_ptr(aabb: Aabb, material: MaterialPtr) -> Arc<AabbBox> {
+    Arc::new(AabbBox::new(aabb, material))
   }
 }
 
@@ -580,8 +580,8 @@ mod tests {
 
   #[test]
   fn test_xzrect() {
-    let mat: Rc<Material> = Lambertian::rc(CosnstantTexture::rc(Vec3::new(1.0, 1.0, 1.0)));
-    let xz = Rect::xzrect(0.0, 0.0, 555.0, 555.0, 0.0, Rc::clone(&mat));
+    let mat: MaterialPtr = Lambertian::rc(ConstantTexture::rc(Vec3::new(1.0, 1.0, 1.0)));
+    let xz = Rect::xzrect(0.0, 0.0, 555.0, 555.0, 0.0, Arc::clone(&mat));
     let ray = Ray::new(Vec3::new(100.0, 4.0, 100.0), Vec3::new(0.0, -1.0, 0.0), 0.0);
     let hit = xz.hit(&ray, 0.0, std::f64::MAX);
 
@@ -592,7 +592,7 @@ mod tests {
       assert_eq!(hit_record.normal, Vec3::new(0.0, 1.0, 0.0));
     }
 
-    let xz2 = Rect::xzrect(213.0, 227.0, 343.0, 332.0, 554.0, Rc::clone(&mat));
+    let xz2 = Rect::xzrect(213.0, 227.0, 343.0, 332.0, 554.0, Arc::clone(&mat));
     let ray2 = Ray::new(Vec3::new(278.0, 278.0, -800.0), Vec3::new(0.0, 2.5477916398634193, 10.0), 0.0);
     let hit2 = xz2.hit(&ray2, 0.0, std::f64::MAX);
     assert!(hit2.is_some());

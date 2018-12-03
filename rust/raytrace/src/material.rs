@@ -1,10 +1,10 @@
-use std::rc::Rc;
+use std::sync::Arc;
 
 use vec3::Vec3;
 use ray::Ray;
 use hitable::HitRecord;
 use rt_rand::*;
-use texture::Texture;
+use texture::TexturePtr;
 
 pub struct ScatterInfo {
   pub attenuation: Vec3,
@@ -19,19 +19,21 @@ pub trait Material {
   }
 }
 
+pub type MaterialPtr = Arc<Material + Sync + Send>;
+
 pub struct Lambertian {
-  texture: Rc<Texture>
+  texture: TexturePtr
 }
 
 impl Lambertian {
-  pub fn new(texture: Rc<Texture>) -> Lambertian {
+  pub fn new(texture: TexturePtr) -> Lambertian {
     Lambertian {
       texture
     }
   }
 
-  pub fn rc(texture: Rc<Texture>) -> Rc<Lambertian> {
-    Rc::new(Lambertian::new(texture))
+  pub fn rc(texture: TexturePtr) -> Arc<Lambertian> {
+    Arc::new(Lambertian::new(texture))
   }
 }
 
@@ -47,20 +49,20 @@ impl Material for Lambertian {
 }
 
 pub struct Metal {
-  texture: Rc<Texture>,
+  texture: TexturePtr,
   fuzz: f64,
 }
 
 impl Metal {
-  pub fn new(texture: Rc<Texture>, fuzz: f64) -> Metal {
+  pub fn new(texture: TexturePtr, fuzz: f64) -> Metal {
     Metal {
       texture,
       fuzz
     }
   }
 
-  pub fn rc(texture: Rc<Texture>, fuzz: f64) -> Rc<Metal> {
-    Rc::new(Metal::new(texture, fuzz))
+  pub fn rc(texture: TexturePtr, fuzz: f64) -> Arc<Metal> {
+    Arc::new(Metal::new(texture, fuzz))
   }
 }
 
@@ -90,8 +92,8 @@ impl Dielectric {
     }
   }
 
-  pub fn rc(ref_index: f64) -> Rc<Dielectric> {
-    Rc::new(Dielectric::new(ref_index))
+  pub fn rc(ref_index: f64) -> Arc<Dielectric> {
+    Arc::new(Dielectric::new(ref_index))
   }
 }
 
@@ -146,18 +148,18 @@ impl Material for Dielectric {
 }
 
 pub struct DiffuseLight {
-  texture: Rc<Texture>,
+  texture: TexturePtr,
 }
 
 impl DiffuseLight {
-  pub fn new(texture: Rc<Texture>) -> DiffuseLight {
+  pub fn new(texture: TexturePtr) -> DiffuseLight {
     DiffuseLight {
       texture
     }
   }
 
-  pub fn rc(tex: Rc<Texture>) -> Rc<DiffuseLight> {
-    Rc::new(DiffuseLight::new(tex))
+  pub fn rc(tex: TexturePtr) -> Arc<DiffuseLight> {
+    Arc::new(DiffuseLight::new(tex))
   }
 }
 

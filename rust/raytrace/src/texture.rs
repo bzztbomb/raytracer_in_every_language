@@ -1,6 +1,6 @@
 extern crate image;
 
-use std::rc::Rc;
+use std::sync::Arc;
 use std::path::Path;
 use self::image::{DynamicImage, GenericImageView, open, Pixel};
 
@@ -11,6 +11,8 @@ pub trait Texture {
   // result: attenuation, scatter
   fn value(&self, u: f64, v: f64, p: &Vec3) -> Vec3;
 }
+
+pub type TexturePtr = Arc<Texture + Sync + Send>;
 
 pub struct ConstantTexture {
   color: Vec3,
@@ -23,8 +25,8 @@ impl ConstantTexture {
     }
   }
 
-  pub fn rc(color: Vec3) -> Rc<ConstantTexture> {
-    Rc::new(ConstantTexture::new(color))
+  pub fn rc(color: Vec3) -> Arc<ConstantTexture> {
+    Arc::new(ConstantTexture::new(color))
   }
 }
 
@@ -35,20 +37,20 @@ impl Texture for ConstantTexture {
 }
 
 pub struct CheckerTexture {
-  odd: Rc<Texture>,
-  even: Rc<Texture>
+  odd: TexturePtr,
+  even: TexturePtr
 }
 
 impl CheckerTexture {
-  pub fn new(odd: Rc<Texture>, even: Rc<Texture>) -> CheckerTexture {
+  pub fn new(odd: TexturePtr, even: TexturePtr) -> CheckerTexture {
     CheckerTexture {
       even,
       odd
     }
   }
 
-  pub fn rc(odd: Rc<Texture>, even: Rc<Texture>) -> Rc<CheckerTexture> {
-    Rc::new(CheckerTexture::new(odd, even))
+  pub fn rc(odd: TexturePtr, even: TexturePtr) -> Arc<CheckerTexture> {
+    Arc::new(CheckerTexture::new(odd, even))
   }
 }
 
@@ -80,8 +82,8 @@ impl NoiseTexture {
     }
   }
 
-  pub fn rc(scale: f64) -> Rc<NoiseTexture> {
-    Rc::new(NoiseTexture::new(scale))
+  pub fn rc(scale: f64) -> Arc<NoiseTexture> {
+    Arc::new(NoiseTexture::new(scale))
   }
 }
 
@@ -109,8 +111,8 @@ impl ImageTexture {
     }
   }
 
-  pub fn rc(filename: &Path) -> Rc<ImageTexture> {
-    Rc::new(ImageTexture::new(filename))
+  pub fn rc(filename: &Path) -> Arc<ImageTexture> {
+    Arc::new(ImageTexture::new(filename))
   }
 }
 

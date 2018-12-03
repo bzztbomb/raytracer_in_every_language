@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::sync::Arc;
 use std::path::Path;
 
 use vec3::Vec3;
@@ -25,7 +25,7 @@ pub fn simple_scene(nx: u32, ny: u32) -> (HitablePtr, Camera, bool) {
         Sphere::hitable_ptr(Vec3::new(-1.0, 0.0, -1.0), -0.45, Dielectric::rc(1.5)),
     ];
 
-    let result = Rc::new(Bvh::new(objs, 0.0, 1.0));
+    let result = Arc::new(Bvh::new(objs, 0.0, 1.0));
     // let mut result = Box::new(HitableList::new());
     // while let Some(obj) = objs.pop() {
     //     result.add_hitable(obj);
@@ -40,9 +40,9 @@ pub fn scene_random(nx: u32, ny: u32) -> (HitablePtr, Camera, bool) {
     let aperture = 0.01;
     let camera = Camera::new(&look_from, &look_at, &Vec3::new(0.0, 1.0, 0.0), 20.0, nx as f64 / ny as f64, aperture, dist_to_focus, 0.0, 1.0);
 
-    let mut result_ptr = Rc::new(HitableList::new());
+    let mut result_ptr = Arc::new(HitableList::new());
     {
-        let result = Rc::get_mut(&mut result_ptr).unwrap();
+        let result = Arc::get_mut(&mut result_ptr).unwrap();
         result.add_hitable(Sphere::hitable_ptr(Vec3::new(0.0, -1000.0, 0.0), 1000.0,
             Lambertian::rc(CheckerTexture::rc(
                 ConstantTexture::rc(Vec3::new(0.2, 0.3, 0.1)),
@@ -88,16 +88,16 @@ pub fn scene_two_spheres(nx: u32, ny: u32) -> (HitablePtr, Camera, bool) {
     let aperture = 0.0;
     let camera = Camera::new(&look_from, &look_at, &Vec3::new(0.0, 1.0, 0.0), 20.0, nx as f64 / ny as f64, aperture, dist_to_focus, 0.0, 1.0);
 
-    let noise: Rc<Material> = Lambertian::rc(NoiseTexture::rc(2.0));
-    let earth: Rc<Material> = Lambertian::rc(ImageTexture::rc(Path::new("map.png")));
+    let noise: MaterialPtr = Lambertian::rc(NoiseTexture::rc(2.0));
+    let earth: MaterialPtr = Lambertian::rc(ImageTexture::rc(Path::new("map.png")));
     let mut objs: Vec<HitablePtr> = vec![
-        Sphere::hitable_ptr(Vec3::new(0.0, -1000.0, 0.0), 1000.0, Rc::clone(&noise)),
-        Sphere::hitable_ptr(Vec3::new(0.0, 2.0, 0.0), 2.0, Rc::clone(&earth)),
+        Sphere::hitable_ptr(Vec3::new(0.0, -1000.0, 0.0), 1000.0, Arc::clone(&noise)),
+        Sphere::hitable_ptr(Vec3::new(0.0, 2.0, 0.0), 2.0, Arc::clone(&earth)),
     ];
 
-    let mut result_ptr = Rc::new(HitableList::new());
+    let mut result_ptr = Arc::new(HitableList::new());
     {
-        let result = Rc::get_mut(&mut result_ptr).unwrap();
+        let result = Arc::get_mut(&mut result_ptr).unwrap();
         while let Some(obj) = objs.pop() {
             result.add_hitable(obj);
         }
@@ -112,19 +112,19 @@ pub fn scene_simple_light(nx: u32, ny: u32) -> (HitablePtr, Camera, bool) {
     let aperture = 0.0;
     let camera = Camera::new(&look_from, &look_at, &Vec3::new(0.0, 1.0, 0.0), 20.0, nx as f64 / ny as f64, aperture, dist_to_focus, 0.0, 1.0);
 
-    let noise: Rc<Material> = Lambertian::rc(NoiseTexture::rc(4.0));
-    let light: Rc<Material> = DiffuseLight::rc(ConstantTexture::rc(Vec3::new(4.0, 4.0, 4.0)));
+    let noise: MaterialPtr = Lambertian::rc(NoiseTexture::rc(4.0));
+    let light: MaterialPtr = DiffuseLight::rc(ConstantTexture::rc(Vec3::new(4.0, 4.0, 4.0)));
     let mut objs: Vec<HitablePtr> = vec![
-        Sphere::hitable_ptr(Vec3::new(0.0, -1000.0, 0.0), 1000.0, Rc::clone(&noise)),
-        Sphere::hitable_ptr(Vec3::new(0.0, 2.0, 0.0), 2.0, Rc::clone(&noise)),
-        Sphere::hitable_ptr(Vec3::new(0.0, 7.0, 0.0), 2.0, Rc::clone(&light)),
-        Rect::xyrect(3.0, 1.0, 5.0, 3.0, -2.0, Rc::clone(&light))
+        Sphere::hitable_ptr(Vec3::new(0.0, -1000.0, 0.0), 1000.0, Arc::clone(&noise)),
+        Sphere::hitable_ptr(Vec3::new(0.0, 2.0, 0.0), 2.0, Arc::clone(&noise)),
+        Sphere::hitable_ptr(Vec3::new(0.0, 7.0, 0.0), 2.0, Arc::clone(&light)),
+        Rect::xyrect(3.0, 1.0, 5.0, 3.0, -2.0, Arc::clone(&light))
     ];
 
 
-    let mut result_ptr = Rc::new(HitableList::new());
+    let mut result_ptr = Arc::new(HitableList::new());
     {
-        let result = Rc::get_mut(&mut result_ptr).unwrap();
+        let result = Arc::get_mut(&mut result_ptr).unwrap();
         while let Some(obj) = objs.pop() {
             result.add_hitable(obj);
         }
@@ -140,25 +140,25 @@ pub fn scene_cornell(nx: u32, ny: u32) -> (HitablePtr, Camera, bool) {
     let vfov = 40.0;
     let camera = Camera::new(&look_from, &look_at, &Vec3::new(0.0, 1.0, 0.0), vfov, nx as f64 / ny as f64, aperture, dist_to_focus, 0.0, 1.0);
 
-    let red: Rc<Material> = Lambertian::rc(ConstantTexture::rc(Vec3::new(0.65, 0.05, 0.05)));
-    let white: Rc<Material> = Lambertian::rc(ConstantTexture::rc(Vec3::new(0.73, 0.73, 0.73)));
-    let green: Rc<Material> = Lambertian::rc(ConstantTexture::rc(Vec3::new(0.12, 0.45, 0.15)));
-    let light: Rc<Material> = DiffuseLight::rc(ConstantTexture::rc(Vec3::new(15.0, 15.0, 15.0)));
+    let red: MaterialPtr = Lambertian::rc(ConstantTexture::rc(Vec3::new(0.65, 0.05, 0.05)));
+    let white: MaterialPtr = Lambertian::rc(ConstantTexture::rc(Vec3::new(0.73, 0.73, 0.73)));
+    let green: MaterialPtr = Lambertian::rc(ConstantTexture::rc(Vec3::new(0.12, 0.45, 0.15)));
+    let light: MaterialPtr = DiffuseLight::rc(ConstantTexture::rc(Vec3::new(15.0, 15.0, 15.0)));
 
     let mut objs: Vec<HitablePtr> = vec![
-        FlipNormals::hitable_ptr(Rect::yzrect(0.0, 0.0, 555.0, 555.0, 555.0, Rc::clone(&green))),
-        Rect::yzrect(0.0, 0.0, 555.0, 555.0, 0.0, Rc::clone(&red)),
-        Rect::xzrect(213.0, 227.0, 343.0, 332.0, 554.0, Rc::clone(&light)),
-        FlipNormals::hitable_ptr(Rect::xzrect(0.0, 0.0, 555.0, 555.0, 555.0, Rc::clone(&white))),
-        Rect::xzrect(0.0, 0.0, 555.0, 555.0, 1.0, Rc::clone(&white)),
-        FlipNormals::hitable_ptr(Rect::xyrect(0.0, 0.0, 555.0, 555.0, 555.0, Rc::clone(&white))),
-        Translate::hitable_ptr(RotateY::hitable_ptr(AabbBox::hitable_ptr(Aabb::new(Vec3::zero(), Vec3::new(165.0, 165.0, 165.0)), Rc::clone(&white)), -18.0), Vec3::new(130.0, 0.0, 65.0)),
-        Translate::hitable_ptr(RotateY::hitable_ptr(AabbBox::hitable_ptr(Aabb::new(Vec3::zero(), Vec3::new(165.0, 330.0, 165.0)), Rc::clone(&white)), 15.0), Vec3::new(265.0, 0.0, 295.0)),
+        FlipNormals::hitable_ptr(Rect::yzrect(0.0, 0.0, 555.0, 555.0, 555.0, Arc::clone(&green))),
+        Rect::yzrect(0.0, 0.0, 555.0, 555.0, 0.0, Arc::clone(&red)),
+        Rect::xzrect(213.0, 227.0, 343.0, 332.0, 554.0, Arc::clone(&light)),
+        FlipNormals::hitable_ptr(Rect::xzrect(0.0, 0.0, 555.0, 555.0, 555.0, Arc::clone(&white))),
+        Rect::xzrect(0.0, 0.0, 555.0, 555.0, 1.0, Arc::clone(&white)),
+        FlipNormals::hitable_ptr(Rect::xyrect(0.0, 0.0, 555.0, 555.0, 555.0, Arc::clone(&white))),
+        Translate::hitable_ptr(RotateY::hitable_ptr(AabbBox::hitable_ptr(Aabb::new(Vec3::zero(), Vec3::new(165.0, 165.0, 165.0)), Arc::clone(&white)), -18.0), Vec3::new(130.0, 0.0, 65.0)),
+        Translate::hitable_ptr(RotateY::hitable_ptr(AabbBox::hitable_ptr(Aabb::new(Vec3::zero(), Vec3::new(165.0, 330.0, 165.0)), Arc::clone(&white)), 15.0), Vec3::new(265.0, 0.0, 295.0)),
     ];
 
-    let mut result_ptr = Rc::new(HitableList::new());
+    let mut result_ptr = Arc::new(HitableList::new());
     {
-        let result = Rc::get_mut(&mut result_ptr).unwrap();
+        let result = Arc::get_mut(&mut result_ptr).unwrap();
         while let Some(obj) = objs.pop() {
             result.add_hitable(obj);
         }
