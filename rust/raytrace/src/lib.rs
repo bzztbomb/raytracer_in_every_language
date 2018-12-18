@@ -9,6 +9,7 @@ pub mod renderer;
 pub mod rt_rand;
 pub mod texture;
 pub mod perlin;
+pub mod constant_medium;
 
 #[cfg(test)]
 mod tests {

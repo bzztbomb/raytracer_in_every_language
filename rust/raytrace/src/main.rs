@@ -5,9 +5,9 @@ use rayon::prelude::*;
 use raytrace::renderer::Renderer;
 use std::fmt;
 
-const NX: u32 = 100;
-const NY: u32 = 100;
-const NS: u32 = 20;
+const NX: u32 = 1000;
+const NY: u32 = 1000;
+const NS: u32 = 5000;
 
 struct WorkChunk {
     x: usize,

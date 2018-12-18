@@ -17,7 +17,7 @@ pub struct Renderer {
 impl Renderer {
   // TODO: Pick scene externally.
   pub fn new(nx: u32, ny: u32, ns: u32) -> Renderer {
-    let (scene, camera, default_sky) = scene_cornell(nx, ny);
+    let (scene, camera, default_sky) = scene_final(nx, ny);
     Renderer {
       scene, camera, nx, ny, num_samples: ns, default_sky
     }
@@ -33,14 +33,19 @@ impl Renderer {
         c = c + p;
     }
     c = c / self.num_samples as f64;
+    // TODO: Tonemap here!
     c.x = c.x.sqrt();
     c.y = c.y.sqrt();
     c.z = c.z.sqrt();
-    let m = c.x.max(c.y.max(c.z));
-    if m > 1.0 {
-      c = c / m;
-    }
     c * 255.0
+  }
+
+  pub fn tonemap(&self, c: &Vec3) -> Vec3 {
+    let lum = 0.2126 * c.x + 0.7152 * c.y + 0.0722 * c.z;
+    let mapped = (lum * (1.0 + (lum / 1.0))) / (lum + 1.0);
+    let scale = mapped / lum;
+
+    *c * scale
   }
 
   fn color(&self, r: &Ray, scene: &HitablePtr, depth: u32) -> Vec3 {
