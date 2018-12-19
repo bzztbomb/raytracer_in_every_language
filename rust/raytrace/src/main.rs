@@ -1,13 +1,17 @@
 extern crate raytrace;
 extern crate rayon;
+extern crate byteorder;
 
+use std::fs::File;
+use std::io::Write;
+use byteorder::{ByteOrder, LittleEndian};
 use rayon::prelude::*;
 use raytrace::renderer::Renderer;
 use std::fmt;
 
 const NX: u32 = 1000;
 const NY: u32 = 1000;
-const NS: u32 = 5000;
+const NS: u32 = 10000;
 
 struct WorkChunk {
     x: usize,
@@ -103,8 +107,19 @@ fn main() {
             }
         }
     }
-    println!("P3\n{} {}\n255", NX, NY);
-    for pixel in full_image.chunks(3) {
-        println!("{} {} {}", pixel[0] as i32, pixel[1] as i32, pixel[2] as i32);
+    // Output a ppm
+    // println!("P3\n{} {}\n255", NX, NY);
+    // for pixel in full_image.chunks(3) {
+    //     println!("{} {} {}", pixel[0] as i32, pixel[1] as i32, pixel[2] as i32);
+    // }
+    // Output a PFM
+    let mut f = File::create("output.pfm").expect("Unable to create output.pfm!");
+    write!(f, "PF\n{} {}\n-1.0\n", NX, NY);
+
+    for pixel in full_image {
+        let mut bytes: [u8; 4] = [0,0,0,0];
+        let mut pixel_f32: [f32; 1] = [pixel as f32];
+        LittleEndian::write_f32_into(&pixel_f32, &mut bytes);
+        f.write_all(&bytes).expect("Unable to write!");
     }
 }

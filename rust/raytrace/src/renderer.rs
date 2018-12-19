@@ -33,11 +33,7 @@ impl Renderer {
         c = c + p;
     }
     c = c / self.num_samples as f64;
-    // TODO: Tonemap here!
-    c.x = c.x.sqrt();
-    c.y = c.y.sqrt();
-    c.z = c.z.sqrt();
-    c * 255.0
+    c
   }
 
   pub fn tonemap(&self, c: &Vec3) -> Vec3 {
