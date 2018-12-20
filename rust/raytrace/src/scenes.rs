@@ -243,7 +243,7 @@ pub fn scene_final(nx: u32, ny: u32) -> (HitablePtr, Camera, bool) {
 
         let dielectric = Dielectric::rc(1.5);
         result.add_hitable(Sphere::hitable_ptr(Vec3::new(260.0, 150.0, 45.0), 50.0, dielectric.clone()));
-        result.add_hitable(Sphere::hitable_ptr(Vec3::new(0.0, 150.0, 145.0), 50.0, Metal::rc(ConstantTexture::rc(Vec3::new(0.8, 0.8, 0.9)), 10.0)));
+        result.add_hitable(Sphere::hitable_ptr(Vec3::new(0.0, 150.0, 145.0), 50.0, Metal::rc(ConstantTexture::rc(Vec3::new(0.8, 0.8, 0.9)), 1.0)));
 
         let boundary: HitablePtr = Sphere::hitable_ptr(Vec3::new(360.0, 150.0, 145.0), 70.0, dielectric.clone());
         result.add_hitable(boundary.clone());
