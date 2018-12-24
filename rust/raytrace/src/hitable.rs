@@ -45,7 +45,7 @@ pub trait Hitable {
 pub type HitablePtr = Arc<Hitable + Sync + Send>;
 
 pub struct HitableList {
-  list: Vec<HitablePtr>,
+  pub list: Vec<HitablePtr>,
 }
 
 impl HitableList {
@@ -547,7 +547,7 @@ impl AabbBox {
     faces.add_hitable(Rect::xzrect(aabb.min.x, aabb.min.z, aabb.max.x, aabb.max.z, aabb.max.y, Arc::clone(&material)));
     faces.add_hitable(FlipNormals::hitable_ptr(Rect::xzrect(aabb.min.x, aabb.min.z, aabb.max.x, aabb.max.z, aabb.min.y, Arc::clone(&material))));
     faces.add_hitable(Rect::yzrect(aabb.min.y, aabb.min.z, aabb.max.y, aabb.max.z, aabb.max.x, Arc::clone(&material)));
-    faces.add_hitable(FlipNormals::hitable_ptr(Rect::yzrect(aabb.min.y, aabb.min.z, aabb.max.y, aabb.max.z, aabb.max.y, Arc::clone(&material))));
+    faces.add_hitable(FlipNormals::hitable_ptr(Rect::yzrect(aabb.min.y, aabb.min.z, aabb.max.y, aabb.max.z, aabb.min.x, Arc::clone(&material))));
     AabbBox {
       aabb,
       faces
