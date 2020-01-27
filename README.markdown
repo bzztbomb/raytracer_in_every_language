@@ -1,7 +1,7 @@
 Ray Tracer in Every Language
 ============================
 
-The goal of this project is to implement the ray tracer described in the mini books [Ray Tracing in One Weekend](http://in1weekend.blogspot.com/2016/01/ray-tracing-in-one-weekend.html) and [Ray Tracing the Next Week](http://in1weekend.blogspot.com/2016/01/ray-tracing-second-weekend.html) in languages I don't use all of the time but I am interested in learning more about.  I've only done Python so far, but on the horizon are:
+The goal of this project is to implement the ray tracer described in the mini books [Ray Tracing in One Weekend](http://in1weekend.blogspot.com/2016/01/ray-tracing-in-one-weekend.html) and [Ray Tracing the Next Week](http://in1weekend.blogspot.com/2016/01/ray-tracing-second-weekend.html) in languages I don't use all of the time but I am interested in learning more about.  I've only done Python and Rust so far, but on the horizon are:
 
 * Go
 * Ruby
