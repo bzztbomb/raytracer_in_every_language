@@ -6,6 +6,6 @@ authors = ["Brian Richardson <skinny@knowhere.net>"]
 [dependencies]
 rand = "0.5.0"
 rand_pcg = "0.1.1"
-image = "0.20.1"
+image = "0.22.5"
 rayon = "1.0.3"
 byteorder = "1.1.0"
